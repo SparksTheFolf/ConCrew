@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}History{% endblock %}
+{% block content %}
+<h3>Activity History</h3>
+<p class="text-muted small">Most recent 300 actions. Approvals, rejections, reward fulfillment, and shift decisions are all logged here.</p>
+
+<form method="GET" class="row g-2 mb-3">
+  <div class="col-md-4">
+    <input type="text" name="q" class="form-control" placeholder="Search by staff name or detail..." value="{{ search_query }}">
+  </div>
+  <div class="col-md-3">
+    <select name="action" class="form-select">
+      <option value="">All action types</option>
+      {% for a in action_types %}
+        <option value="{{ a }}" {{ "selected" if a == action_filter else "" }}>{{ a }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
+    <button class="btn btn-primary">Filter</button>
+    <a href="{{ url_for('admin.history') }}" class="btn btn-outline-secondary">Clear</a>
+  </div>
+</form>
+
+<div class="table-responsive">
+<table class="table table-sm bg-white">
+  <thead><tr><th>When</th><th>Staff</th><th>Action</th><th>Detail</th></tr></thead>
+  <tbody>
+    {% for e in entries %}
+    <tr>
+      <td class="text-nowrap">{{ e.created_at.strftime('%m/%d %H:%M') }}</td>
+      <td>{{ e.actor.badge_name }}</td>
+      <td><span class="badge bg-secondary">{{ e.action }}</span></td>
+      <td>{{ e.detail or "" }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4" class="text-muted">No matching activity.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

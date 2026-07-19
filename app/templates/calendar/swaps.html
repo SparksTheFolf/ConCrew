@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Swap Shifts{% endblock %}
+{% block content %}
+<h3>Swap Shifts</h3>
+<p class="text-muted">Trade one of your confirmed shifts for another volunteer's. They'll need to accept before anything changes.</p>
+
+{% if not con_year %}
+  <div class="alert alert-warning">No con year is currently marked active.</div>
+{% else %}
+
+<div class="row">
+  <div class="col-lg-6 mb-4">
+    <div class="card h-100">
+      <div class="card-header">Propose a Swap</div>
+      <div class="card-body">
+        {% if not my_shifts %}
+          <p class="text-muted small mb-0">You don't have any upcoming confirmed shifts to trade.</p>
+        {% elif not candidates %}
+          <p class="text-muted small mb-0">No other eligible shifts are available to swap for right now.</p>
+        {% else %}
+        <form method="POST" action="{{ url_for('calendar.propose_swap') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label small">Which of your shifts do you want to give up?</label>
+            <select name="my_shift_request_id" class="form-select form-select-sm" required>
+              {% for r in my_shifts %}
+                <option value="{{ r.id }}">
+                  {{ r.shift_slot.label or r.shift_slot.department.name }} —
+                  {{ r.shift_slot.shift_date.strftime('%a %m/%d') }}, {{ r.shift_slot.start_time.strftime('%H:%M') }}–{{ r.shift_slot.end_time.strftime('%H:%M') }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small d-block">Which shift do you want instead?</label>
+            <div class="border rounded" style="max-height: 260px; overflow-y: auto;">
+              {% for r in candidates %}
+                <div class="form-check border-bottom px-3 py-2 m-0">
+                  <input class="form-check-input" type="radio" name="target_shift_request_id" value="{{ r.id }}" id="target-{{ r.id }}" required>
+                  <label class="form-check-label small" for="target-{{ r.id }}">
+                    <strong>{{ r.volunteer.badge_name }}</strong>'s {{ r.shift_slot.label or r.shift_slot.department.name }}
+                    — {{ r.shift_slot.shift_date.strftime('%a %m/%d') }}, {{ r.shift_slot.start_time.strftime('%H:%M') }}–{{ r.shift_slot.end_time.strftime('%H:%M') }}
+                    <span class="text-muted">({{ r.shift_slot.department.name }})</span>
+                  </label>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small">Note (optional)</label>
+            <input type="text" name="note" class="form-control form-control-sm" maxlength="255" placeholder="Anything you want them to know">
+          </div>
+          <button class="btn btn-sm btn-primary">Propose Swap</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6 mb-4">
+    <div class="card mb-3">
+      <div class="card-header">Incoming Requests ({{ incoming|length }})</div>
+      <div class="card-body">
+        {% for s in incoming %}
+          <div class="border-bottom pb-2 mb-2">
+            <strong>{{ s.requester.badge_name }}</strong> wants to trade with you<br>
+            <span class="small">
+              Offering: {{ s.requester_shift_request.shift_slot.label or s.requester_shift_request.shift_slot.department.name }}
+              — {{ s.requester_shift_request.shift_slot.shift_date.strftime('%a %m/%d') }},
+              {{ s.requester_shift_request.shift_slot.start_time.strftime('%H:%M') }}–{{ s.requester_shift_request.shift_slot.end_time.strftime('%H:%M') }}
+            </span><br>
+            <span class="small">
+              For your: {{ s.target_shift_request.shift_slot.label or s.target_shift_request.shift_slot.department.name }}
+              — {{ s.target_shift_request.shift_slot.shift_date.strftime('%a %m/%d') }},
+              {{ s.target_shift_request.shift_slot.start_time.strftime('%H:%M') }}–{{ s.target_shift_request.shift_slot.end_time.strftime('%H:%M') }}
+            </span>
+            {% if s.note %}<div class="small text-muted mt-1">"{{ s.note }}"</div>{% endif %}
+            <div class="mt-2">
+              <form method="POST" action="{{ url_for('calendar.accept_swap', swap_id=s.id) }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-success">Accept</button>
+              </form>
+              <form method="POST" action="{{ url_for('calendar.decline_swap', swap_id=s.id) }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-outline-danger">Decline</button>
+              </form>
+            </div>
+          </div>
+        {% else %}
+          <p class="text-muted small mb-0">No incoming swap requests.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">My Outgoing Requests</div>
+      <div class="card-body">
+        {% for s in outgoing %}
+          <div class="border-bottom pb-2 mb-2">
+            <span class="small">
+              Your {{ s.requester_shift_request.shift_slot.label or s.requester_shift_request.shift_slot.department.name }}
+              ({{ s.requester_shift_request.shift_slot.shift_date.strftime('%a %m/%d') }})
+              for {{ s.target_shift_request.volunteer.badge_name }}'s
+              {{ s.target_shift_request.shift_slot.label or s.target_shift_request.shift_slot.department.name }}
+              ({{ s.target_shift_request.shift_slot.shift_date.strftime('%a %m/%d') }})
+            </span>
+            <div class="mt-1">
+              {% if s.status == 'pending' %}
+                <span class="badge bg-warning text-dark">Pending</span>
+                <form method="POST" action="{{ url_for('calendar.cancel_swap', swap_id=s.id) }}" class="d-inline ms-1">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="btn btn-sm btn-link p-0">cancel</button>
+                </form>
+              {% elif s.status == 'accepted' %}
+                <span class="badge bg-success">Accepted</span>
+              {% elif s.status == 'declined' %}
+                <span class="badge bg-danger">Declined</span>
+              {% elif s.status == 'cancelled' %}
+                <span class="badge bg-secondary">Cancelled</span>
+              {% endif %}
+            </div>
+          </div>
+        {% else %}
+          <p class="text-muted small mb-0">No outgoing swap requests.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Mass Email{% endblock %}
+{% block content %}
+<h3>Mass Email</h3>
+<p class="text-muted small">Send an email to a set of users at once. Each recipient gets their own message -- no one will see anyone else's address.</p>
+
+<form method="POST" class="card card-body bg-white" style="max-width: 700px;" id="mass-email-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div class="mb-3">
+    <label class="form-label d-block">Send To</label>
+    <div class="form-check form-check-inline">
+      <input class="form-check-input" type="radio" name="target_mode" value="roles" id="mode-roles" checked>
+      <label class="form-check-label" for="mode-roles">Specific roles</label>
+    </div>
+    <div class="form-check form-check-inline">
+      <input class="form-check-input" type="radio" name="target_mode" value="departments" id="mode-departments">
+      <label class="form-check-label" for="mode-departments">Department group</label>
+    </div>
+    <div class="form-check form-check-inline">
+      <input class="form-check-input" type="radio" name="target_mode" value="users" id="mode-users">
+      <label class="form-check-label" for="mode-users">Specific users</label>
+    </div>
+  </div>
+
+  <div class="mb-3" id="roles-field">
+    <label class="form-label">Roles</label>
+    <div>
+      {% for r in roles %}
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" name="roles" value="{{ r }}" id="role-{{ r }}">
+        <label class="form-check-label" for="role-{{ r }}">{{ r }}</label>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="mb-3" id="departments-field" style="display:none;">
+    <label class="form-label">Departments</label>
+    <div class="small text-muted mb-1">Sends to volunteers eligible for these departments and any assigners managing them.</div>
+    <div>
+      {% for d in departments %}
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" name="department_ids" value="{{ d.id }}" id="dept-{{ d.id }}">
+        <label class="form-check-label" for="dept-{{ d.id }}">{{ d.name }}</label>
+      </div>
+      {% else %}
+      <div class="text-muted small">No departments configured.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="mb-3" id="users-field" style="display:none;">
+    <label class="form-label">Users</label>
+    <div class="table-responsive" style="max-height: 320px; overflow-y: auto;">
+      <table class="table table-sm">
+        <thead><tr><th><input type="checkbox" id="select-all-mass-email-users" aria-label="Select all users"></th><th>Badge Name</th><th>Role</th><th>Email</th></tr></thead>
+        <tbody>
+          {% for u in all_users %}
+          <tr>
+            <td><input type="checkbox" name="user_ids" value="{{ u.id }}" class="mass-email-user-checkbox" aria-label="Select {{ u.badge_name }}" {{ "disabled" if not u.email }}></td>
+            <td>{{ u.badge_name }}</td>
+            <td><span class="badge bg-secondary">{{ u.role }}</span></td>
+            <td>{{ u.email or "no email on file" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Subject</label>
+    <input type="text" name="subject" class="form-control" required maxlength="200">
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Message</label>
+    <textarea name="body" class="form-control" rows="8" required></textarea>
+    <div class="small text-muted mt-1">Plain text -- line breaks become paragraphs in the emailed version.</div>
+  </div>
+
+  <button class="btn btn-primary" type="submit" onclick="return confirm('Send this email now?')">Send Email</button>
+</form>
+
+<script>
+  const modeRadios = document.querySelectorAll('input[name="target_mode"]');
+  const rolesField = document.getElementById('roles-field');
+  const departmentsField = document.getElementById('departments-field');
+  const usersField = document.getElementById('users-field');
+
+  function syncModeVisibility() {
+    const mode = document.querySelector('input[name="target_mode"]:checked').value;
+    rolesField.style.display = mode === 'roles' ? 'block' : 'none';
+    departmentsField.style.display = mode === 'departments' ? 'block' : 'none';
+    usersField.style.display = mode === 'users' ? 'block' : 'none';
+  }
+  modeRadios.forEach(r => r.addEventListener('change', syncModeVisibility));
+  syncModeVisibility();
+
+  const selectAllMassEmailUsers = document.getElementById('select-all-mass-email-users');
+  const massEmailUserCheckboxes = document.querySelectorAll('.mass-email-user-checkbox');
+  if (selectAllMassEmailUsers) {
+    selectAllMassEmailUsers.addEventListener('change', function () {
+      massEmailUserCheckboxes.forEach(function (cb) {
+        if (!cb.disabled) cb.checked = selectAllMassEmailUsers.checked;
+      });
+    });
+  }
+</script>
+{% endblock %}

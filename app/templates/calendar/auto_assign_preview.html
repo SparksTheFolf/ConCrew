@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Auto-Assign Preview{% endblock %}
+{% block content %}
+<h3>Auto-Assign Preview</h3>
+<p class="text-muted">
+  Nothing has been saved yet. Review the plan below, then confirm to apply it.
+</p>
+
+<div class="alert {{ 'alert-danger' if mode == 'reassign' else 'alert-info' }} d-flex flex-wrap gap-3">
+  <span><strong>Mode:</strong> {{ "Reassign (clears existing assignments first)" if mode == "reassign" else "Assign (fills open shifts only)" }}</span>
+  <span><strong>Scope:</strong> {{ scope_label }}</span>
+  <span><strong>Email newly assigned volunteers:</strong> {{ "Yes" if send_email else "No" }}</span>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-3">
+    <div class="card card-body text-center">
+      <div class="fs-3">{{ plan.assignments|length }}</div>
+      <div class="small text-muted">New assignments</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card card-body text-center">
+      <div class="fs-3">{{ plan.to_cancel|length }}</div>
+      <div class="small text-muted">Existing assignments cleared</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card card-body text-center">
+      <div class="fs-3">{{ plan.unfilled|length }}</div>
+      <div class="small text-muted">Shifts still unfilled after this</div>
+    </div>
+  </div>
+</div>
+
+{% if plan.to_cancel %}
+<div class="card mb-3">
+  <div class="card-header bg-danger text-white">Existing assignments that will be cleared ({{ plan.to_cancel|length }})</div>
+  <div class="table-responsive">
+    <table class="table table-sm mb-0">
+      <thead><tr><th>Volunteer</th><th>Department</th><th>Shift</th><th>Date</th><th>Time</th></tr></thead>
+      <tbody>
+        {% for r in plan.to_cancel %}
+        <tr>
+          <td>{{ r.volunteer.badge_name }}</td>
+          <td>{{ r.shift_slot.department.name }}</td>
+          <td>{{ r.shift_slot.label or r.shift_slot.department.name }}</td>
+          <td>{{ r.shift_slot.shift_date.strftime('%a %m/%d') }}</td>
+          <td>{{ r.shift_slot.start_time.strftime('%H:%M') }}–{{ r.shift_slot.end_time.strftime('%H:%M') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="card mb-3">
+  <div class="card-header bg-success text-white">New assignments ({{ plan.assignments|length }})</div>
+  <div class="table-responsive">
+    <table class="table table-sm mb-0">
+      <thead><tr><th>Volunteer</th><th>Department</th><th>Shift</th><th>Date</th><th>Time</th></tr></thead>
+      <tbody>
+        {% for a in plan.assignments %}
+        <tr>
+          <td>{{ a.volunteer.badge_name }}</td>
+          <td>{{ a.slot.department.name }}</td>
+          <td>{{ a.slot.label or a.slot.department.name }}</td>
+          <td>{{ a.slot.shift_date.strftime('%a %m/%d') }}</td>
+          <td>{{ a.slot.start_time.strftime('%H:%M') }}–{{ a.slot.end_time.strftime('%H:%M') }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-muted">No eligible volunteers were available to assign.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if plan.unfilled %}
+<div class="card mb-3">
+  <div class="card-header bg-warning">Still unfilled after this plan ({{ plan.unfilled|length }})</div>
+  <div class="table-responsive">
+    <table class="table table-sm mb-0">
+      <thead><tr><th>Department</th><th>Shift</th><th>Date</th><th>Time</th><th>Open spots</th></tr></thead>
+      <tbody>
+        {% for u in plan.unfilled %}
+        <tr>
+          <td>{{ u.slot.department.name }}</td>
+          <td>{{ u.slot.label or u.slot.department.name }}</td>
+          <td>{{ u.slot.shift_date.strftime('%a %m/%d') }}</td>
+          <td>{{ u.slot.start_time.strftime('%H:%M') }}–{{ u.slot.end_time.strftime('%H:%M') }}</td>
+          <td>{{ u.open_spots }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card-body py-2 small text-muted">No eligible (or no non-conflicting) volunteers were found for these -- they'll need a manual assignment.</div>
+</div>
+{% endif %}
+
+<form method="POST" action="{{ url_for('calendar.auto_assign_apply') }}" class="mb-4" id="auto-assign-apply-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="mode" value="{{ mode }}">
+  <input type="hidden" name="department_id" value="{{ department_id }}">
+  <input type="hidden" name="send_email" value="{{ 'on' if send_email else '' }}">
+  <input type="hidden" name="plan_payload" value='{{ plan_payload }}'>
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-primary" {{ "disabled" if not plan.assignments and not plan.to_cancel }}
+      onclick="return confirm('This will {{ 'cancel ' ~ plan.to_cancel|length ~ ' existing assignment(s) and ' if plan.to_cancel else '' }}create {{ plan.assignments|length }} new shift assignment(s). Are you sure you want to apply this?')">
+      Confirm &amp; Apply
+    </button>
+    <a href="{{ url_for('calendar.view') }}" class="btn btn-outline-secondary">Cancel, don't apply</a>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,10 @@
+services:
+  web:
+    build: .
+    ports:
+      - "80:80"
+    volumes:
+      - ./instance:/app/instance
+    env_file:
+      - .env
+    restart: unless-stopped

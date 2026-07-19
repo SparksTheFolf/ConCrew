@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Pending Hours{% endblock %}
+{% block content %}
+<h3>Pending Hour Approvals</h3>
+<div class="table-responsive">
+<table class="table table-sm bg-white">
+  <thead><tr><th>Volunteer</th><th>Date</th><th>Dept</th><th>Hours</th><th>Task</th><th>Logged by</th><th></th></tr></thead>
+  <tbody>
+    {% for e in entries %}
+    <tr>
+      <td>{{ e.volunteer.badge_name }}</td>
+      <td>{{ e.work_date }}</td>
+      <td>{{ e.department.name }}</td>
+      <td>{{ e.hours }}</td>
+      <td>{{ e.task_description or "" }}</td>
+      <td>{{ e.logged_by.badge_name }}</td>
+      <td class="text-end">
+        <form method="POST" action="{{ url_for('assigner.approve_hours', entry_id=e.id) }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-success">Approve</button>
+        </form>
+        <form method="POST" action="{{ url_for('assigner.reject_hours', entry_id=e.id) }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-outline-danger">Reject</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="text-muted">Nothing pending 🎉</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

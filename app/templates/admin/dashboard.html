@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-4">
+  <div>
+    <h3 class="mb-1">Admin Dashboard</h3>
+    {% if con_year %}
+      <p class="text-muted mb-0">
+        {{ con_year.con_name or con_year.label }}
+        {% if con_year.start_date and con_year.end_date %}
+          &bull; {{ con_year.start_date.strftime('%b %d') }}–{{ con_year.end_date.strftime('%b %d, %Y') }}
+        {% endif %}
+      </p>
+    {% else %}
+      <p class="text-muted mb-0">No active convention year set.</p>
+    {% endif %}
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <form method="POST" action="{{ url_for('admin.send_shift_reminders') }}" class="d-inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-outline-secondary btn-sm" onclick="return confirm('Send reminder emails for every confirmed shift starting tomorrow?')">Send Shift Reminders</button>
+    </form>
+    <a href="{{ url_for('admin.mass_email') }}" class="btn btn-outline-secondary btn-sm">Mass Email</a>
+    <a href="{{ url_for('admin.new_user') }}" class="btn btn-primary btn-sm">Add User</a>
+  </div>
+</div>
+
+{% if not con_year %}
+<div class="alert alert-warning d-flex flex-wrap justify-content-between align-items-center gap-2">
+  <span>Set up a convention year to start tracking volunteer hours and rewards.</span>
+  <a href="{{ url_for('admin.convention_settings') }}" class="btn btn-sm btn-warning">Set up now</a>
+</div>
+{% endif %}
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <a href="{{ url_for('admin.pending_hours') }}" class="stat-card stat-card-warning">
+      <div class="stat-card-value">{{ pending_count }}</div>
+      <div class="stat-card-label">Pending hour approvals</div>
+      <div class="stat-card-hint">Review →</div>
+    </a>
+  </div>
+  <div class="col-6 col-lg-3">
+    <a href="{{ url_for('calendar.view') }}" class="stat-card stat-card-info">
+      <div class="stat-card-value">{{ pending_shift_requests }}</div>
+      <div class="stat-card-label">Pending shift requests</div>
+      <div class="stat-card-hint">Review →</div>
+    </a>
+  </div>
+  <div class="col-6 col-lg-3">
+    <a href="{{ url_for('admin.claims_matrix') }}?status=eligible" class="stat-card stat-card-success">
+      <div class="stat-card-value">{{ eligible_unclaimed }}</div>
+      <div class="stat-card-label">Eligible, unclaimed rewards</div>
+      <div class="stat-card-hint">Review →</div>
+    </a>
+  </div>
+  <div class="col-6 col-lg-3">
+    <a href="{{ url_for('admin.no_shows') }}" class="stat-card {{ 'stat-card-warning' if no_show_count else 'stat-card-neutral' }}">
+      <div class="stat-card-value">{{ no_show_count }}</div>
+      <div class="stat-card-label">Possible no-shows</div>
+      <div class="stat-card-hint">Review →</div>
+    </a>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header bg-white">Currently Checked In ({{ in_progress_requests|length }})</div>
+      <div class="card-body">
+        {% for r in in_progress_requests %}
+          <div class="d-flex justify-content-between align-items-center {{ 'border-bottom pb-2 mb-2' if not loop.last }}">
+            <div>
+              <strong>{{ r.volunteer.badge_name }}</strong>
+              <div class="small text-muted">{{ r.shift_slot.label or r.shift_slot.department.name }} &bull; {{ r.shift_slot.department.name }}</div>
+            </div>
+            <div class="text-end">
+              <span class="badge bg-primary">In progress</span>
+              {% if r.checked_in_at %}<div class="small text-muted">since {{ r.checked_in_at.strftime('%H:%M') }}</div>{% endif %}
+            </div>
+          </div>
+        {% else %}
+          <p class="text-muted small mb-0">No one is currently checked in.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header bg-white">Upcoming Shifts</div>
+      <div class="card-body">
+        {% for r in upcoming_requests %}
+          <div class="d-flex justify-content-between align-items-center {{ 'border-bottom pb-2 mb-2' if not loop.last }}">
+            <div>
+              <strong>{{ r.volunteer.badge_name }}</strong>
+              <div class="small text-muted">{{ r.shift_slot.label or r.shift_slot.department.name }} &bull; {{ r.shift_slot.department.name }}</div>
+            </div>
+            <div class="text-end small text-muted">
+              {{ r.shift_slot.shift_date.strftime('%a %m/%d') }}<br>{{ r.shift_slot.start_time.strftime('%H:%M') }}
+            </div>
+          </div>
+        {% else %}
+          <p class="text-muted small mb-0">No upcoming confirmed shifts.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <h5 class="mb-0">Volunteers ({{ rows|length }})</h5>
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+      <input type="search" id="volunteer-search" class="form-control form-control-sm" style="width: 220px;" placeholder="Search volunteers...">
+      <a href="{{ url_for('admin.export_csv') }}" class="btn btn-sm btn-outline-secondary">Download CSV</a>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm table-hover align-middle mb-0 bg-white" id="volunteer-table">
+      <thead class="table-light">
+        <tr>
+          <th>Volunteer</th>
+          <th>Hours</th>
+          <th>Current Tier</th>
+          <th>Progress to Next Tier</th>
+          <th class="text-end"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        {% set pct = ((r.hours / r.next_tier.threshold_hours * 100) if (r.next_tier and r.next_tier.threshold_hours) else 100) %}
+        {% set pct = [pct, 100] | min %}
+        <tr data-name="{{ r.user.badge_name|lower }}">
+          <td>{{ r.user.badge_name }}</td>
+          <td>{{ r.hours }}</td>
+          <td>
+            {% if r.tier %}
+              <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">{{ r.tier.name }}</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td style="min-width: 200px;">
+            {% if r.next_tier %}
+              <div class="d-flex align-items-center gap-2">
+                <div class="progress flex-grow-1" style="height: 6px;">
+                  <div class="progress-bar" role="progressbar" style="width: {{ pct }}%;"></div>
+                </div>
+                <span class="small text-muted text-nowrap">{{ r.remaining }}h to {{ r.next_tier.name }}</span>
+              </div>
+            {% else %}
+              <span class="small text-muted">Max tier reached</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <form method="POST" action="{{ url_for('admin.recalc_claims', user_id=r.user.id) }}" class="d-inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm btn-outline-secondary">Re-sync claims</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-muted text-center py-4">No active con year or no volunteers yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card-footer bg-white small text-muted" id="volunteer-empty-search" style="display:none;">
+    No volunteers match your search.
+  </div>
+</div>
+
+<script>
+(function () {
+  const searchInput = document.getElementById('volunteer-search');
+  const rowsEls = document.querySelectorAll('#volunteer-table tbody tr[data-name]');
+  const emptyState = document.getElementById('volunteer-empty-search');
+  if (!searchInput) return;
+
+  searchInput.addEventListener('input', () => {
+    const q = searchInput.value.trim().toLowerCase();
+    let visibleCount = 0;
+    rowsEls.forEach(tr => {
+      const match = tr.dataset.name.includes(q);
+      tr.style.display = match ? '' : 'none';
+      if (match) visibleCount++;
+    });
+    emptyState.style.display = (q && visibleCount === 0) ? '' : 'none';
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Add User{% endblock %}
+{% block content %}
+<h3>Add User</h3>
+
+<form method="POST" class="card card-body bg-white" style="max-width: 550px;" id="new-user-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="mb-3">
+    <label class="form-label">Full Name</label>
+    <input type="text" name="full_name" class="form-control" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Badge Name</label>
+    <input type="text" name="badge_name" class="form-control" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Role</label>
+    <select name="role" class="form-select" id="role-select" required>
+      {% for r in roles %}<option value="{{ r }}">{{ r }}</option>{% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3" id="dept-field" style="display:none;">
+    <label class="form-label">Departments Managed (for assigners)</label>
+    <select name="department_ids" class="form-select" multiple size="5">
+      {% for d in departments %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3" id="report-to-field" style="display:none;">
+    <label class="form-label">Report To (required for volunteers)</label>
+    <select name="report_to_id" id="report-to-select" class="form-select">
+      <option value="">Select supervisor</option>
+      {% for u in report_to_options %}
+      <option value="{{ u.id }}">{{ u.badge_name }} ({{ u.role }})</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label d-block">Account Type</label>
+    <div class="form-check form-check-inline">
+      <input class="form-check-input" type="radio" name="account_type" value="email" id="type-email" checked>
+      <label class="form-check-label" for="type-email">Standard (email + password)</label>
+    </div>
+    <div class="form-check form-check-inline">
+      <input class="form-check-input" type="radio" name="account_type" value="kiosk" id="type-kiosk">
+      <label class="form-check-label" for="type-kiosk">Kiosk (auto-generated username + password)</label>
+    </div>
+    <div class="small text-muted mt-1">Use kiosk accounts for volunteers checking in on a shared tablet/station without needing their own email.</div>
+  </div>
+
+  <div id="email-fields">
+    <div class="mb-3">
+      <label class="form-label">Email</label>
+      <input type="email" name="email" class="form-control">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Password (min 8 characters)</label>
+      <input type="password" name="password" class="form-control">
+    </div>
+  </div>
+
+  <button class="btn btn-primary">Create Account</button>
+</form>
+
+<script>
+  const roleSelect = document.getElementById('role-select');
+  const deptField = document.getElementById('dept-field');
+  const reportToField = document.getElementById('report-to-field');
+  const reportToSelect = document.getElementById('report-to-select');
+  const emailFields = document.getElementById('email-fields');
+  const kioskRadio = document.getElementById('type-kiosk');
+  const emailRadio = document.getElementById('type-email');
+
+  function syncDeptVisibility() {
+    deptField.style.display = roleSelect.value === 'assigner' ? 'block' : 'none';
+  }
+  function syncReportToVisibility() {
+    const isVolunteer = roleSelect.value === 'volunteer';
+    reportToField.style.display = isVolunteer ? 'block' : 'none';
+    reportToSelect.required = isVolunteer;
+    if (!isVolunteer) {
+      reportToSelect.value = '';
+    }
+  }
+  function syncAccountFields() {
+    emailFields.style.display = kioskRadio.checked ? 'none' : 'block';
+  }
+  roleSelect.addEventListener('change', syncDeptVisibility);
+  roleSelect.addEventListener('change', syncReportToVisibility);
+  kioskRadio.addEventListener('change', syncAccountFields);
+  emailRadio.addEventListener('change', syncAccountFields);
+  syncDeptVisibility();
+  syncReportToVisibility();
+  syncAccountFields();
+</script>
+{% endblock %}

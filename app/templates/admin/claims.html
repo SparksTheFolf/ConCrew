@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Reward Claims{% endblock %}
+{% block content %}
+<h3>Reward Claim Fulfillment {% if con_year %}— {{ con_year.label }}{% endif %}</h3>
+
+<form method="GET" class="mb-3">
+  <div class="input-group" style="max-width: 400px;">
+    <input type="text" name="q" class="form-control" placeholder="Search volunteer by name or code..." value="{{ search_query }}" autofocus>
+    {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+    <button class="btn btn-primary">Search</button>
+  </div>
+</form>
+
+<div class="mb-3">
+  <a class="btn btn-sm {{ 'btn-primary' if not status_filter else 'btn-outline-primary' }}" href="{{ url_for('admin.claims_matrix', q=search_query) }}">All</a>
+  <a class="btn btn-sm {{ 'btn-success' if status_filter == 'eligible' else 'btn-outline-success' }}" href="{{ url_for('admin.claims_matrix', q=search_query, status='eligible') }}">Eligible / Unclaimed</a>
+  <a class="btn btn-sm {{ 'btn-secondary' if status_filter == 'fulfilled' else 'btn-outline-secondary' }}" href="{{ url_for('admin.claims_matrix', q=search_query, status='fulfilled') }}">Fulfilled</a>
+</div>
+
+{% if not search_query %}
+<p class="text-muted">Search for a volunteer above to see their reward claims.</p>
+{% else %}
+<div class="table-responsive">
+<table class="table table-sm bg-white">
+  <thead><tr><th>Volunteer</th><th>Item</th><th>Tier</th><th>Status</th><th>Fulfilled By</th><th></th></tr></thead>
+  <tbody>
+    {% for c in claims %}
+    <tr>
+      <td>{{ c.volunteer.badge_name }}</td>
+      <td>{{ c.reward_item.name }}</td>
+      <td>{{ c.reward_item.tier.name }}</td>
+      <td>
+        {% if c.status == 'fulfilled' %}<span class="badge bg-secondary">Fulfilled</span>
+        {% else %}<span class="badge bg-success">Eligible</span>{% endif %}
+      </td>
+      <td>{{ c.fulfilled_by.badge_name if c.fulfilled_by else "—" }}</td>
+      <td class="text-end">
+        {% if c.status != 'fulfilled' %}
+        <form method="POST" action="{{ url_for('claims.fulfill', claim_id=c.id) }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-success">Mark Fulfilled</button>
+        </form>
+        {% elif current_user.role == 'admin' %}
+        <form method="POST" action="{{ url_for('claims.unfulfill', claim_id=c.id) }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-outline-danger">Undo</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="text-muted">No claims match this search.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+{% endblock %}

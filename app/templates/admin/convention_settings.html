@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Convention Settings{% endblock %}
+{% block content %}
+<h3>Convention Settings</h3>
+
+<div class="card card-body bg-white mb-3" style="max-width: 760px;">
+  <h5 class="mb-3">Current Convention</h5>
+  {% if current_con %}
+  <form method="POST" class="mb-2">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="update_current_con">
+    <input type="hidden" name="con_year_id" value="{{ current_con.id }}">
+
+    <div class="row g-3">
+      <div class="col-md-8">
+        <label class="form-label">Con Name</label>
+        <input class="form-control" name="con_name" value="{{ current_con.con_name or '' }}" required>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Year Label</label>
+        <input class="form-control" name="label" value="{{ current_con.label }}" required>
+      </div>
+    </div>
+
+    <div class="mt-3">
+      <label class="form-label">Volunteer Contact Email</label>
+      <input type="email" class="form-control" name="contact_email" value="{{ current_con.contact_email or '' }}">
+    </div>
+
+    <div class="row g-3 mt-1">
+      <div class="col-md-6">
+        <label class="form-label">Start Date</label>
+        <input type="date" class="form-control" name="start_date" value="{{ current_con.start_date.isoformat() if current_con.start_date else '' }}">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">End Date</label>
+        <input type="date" class="form-control" name="end_date" value="{{ current_con.end_date.isoformat() if current_con.end_date else '' }}">
+      </div>
+    </div>
+
+    <button class="btn btn-primary mt-3">Save Convention Info</button>
+  </form>
+  {% else %}
+  <p class="text-muted mb-0">No current convention year is set.</p>
+  {% endif %}
+</div>
+
+<div class="card card-body bg-white mb-3" style="max-width: 760px;">
+  <h5 class="mb-3">Switch Current Convention</h5>
+  <form method="POST" class="row g-3 align-items-end">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="switch_current_con">
+    <div class="col-md-8">
+      <label class="form-label">Convention Year</label>
+      <select class="form-select" name="current_con_year_id" required>
+        {% for cy in con_years %}
+        <option value="{{ cy.id }}" {% if cy.is_current %}selected{% endif %}>{{ cy.label }} — {{ cy.con_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4">
+      <button class="btn btn-outline-primary w-100">Set Current</button>
+    </div>
+  </form>
+</div>
+
+<div class="card card-body bg-white mb-3" style="max-width: 760px;">
+  <h5 class="mb-3">Create New Convention Year</h5>
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="create_con_year">
+
+    <div class="row g-3">
+      <div class="col-md-8">
+        <label class="form-label">Con Name</label>
+        <input class="form-control" name="new_con_name" placeholder="ExampleCon 2027" required>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Year Label</label>
+        <input class="form-control" name="new_label" placeholder="2027" required>
+      </div>
+    </div>
+
+    <div class="mt-3">
+      <label class="form-label">Volunteer Contact Email</label>
+      <input type="email" class="form-control" name="new_contact_email" placeholder="volunteer@example.org">
+    </div>
+
+    <div class="row g-3 mt-1">
+      <div class="col-md-6">
+        <label class="form-label">Start Date</label>
+        <input type="date" class="form-control" name="new_start_date">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">End Date</label>
+        <input type="date" class="form-control" name="new_end_date">
+      </div>
+    </div>
+
+    <button class="btn btn-outline-success mt-3">Create Convention Year</button>
+  </form>
+</div>
+
+<div class="card card-body bg-white mb-3" style="max-width: 760px;">
+  <h5 class="mb-3">Departments</h5>
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="update_departments">
+
+    {% for d in departments %}
+    <div class="row g-2 align-items-center mb-2">
+      <div class="col-md-8">
+        <input class="form-control" name="department_name_{{ d.id }}" value="{{ d.name }}" required>
+      </div>
+      <div class="col-md-4 form-check pt-2">
+        <input class="form-check-input" type="checkbox" id="delete_department_{{ d.id }}" name="delete_department_{{ d.id }}">
+        <label class="form-check-label" for="delete_department_{{ d.id }}">Delete</label>
+      </div>
+    </div>
+    {% else %}
+    <p class="text-muted">No departments yet.</p>
+    {% endfor %}
+
+    <label class="form-label mt-3" for="new_departments">Add Departments</label>
+    <textarea class="form-control" id="new_departments" name="new_departments" rows="3" placeholder="One department name per line"></textarea>
+
+    <button class="btn btn-primary mt-3">Save Departments</button>
+  </form>
+</div>
+
+<p class="text-muted small">This page is admin-only and intended for managing all convention-level settings.</p>
+{% endblock %}

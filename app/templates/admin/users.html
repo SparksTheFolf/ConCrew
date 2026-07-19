@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Users{% endblock %}
+{% block content %}
+<h3>Users</h3>
+<form method="POST" action="{{ url_for('admin.bulk_export_users_csv') }}" id="bulk-users-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="d-flex flex-wrap gap-2 mb-3">
+    <button class="btn btn-outline-primary btn-sm" type="submit">Download Selected CSV</button>
+    <button class="btn btn-outline-danger btn-sm" type="submit" formaction="{{ url_for('admin.bulk_delete_users') }}" onclick="return confirm('Delete selected volunteer accounts and their volunteer data? This cannot be undone.')">Delete Selected Volunteer Data</button>
+  </div>
+<div class="table-responsive">
+<table class="table table-sm bg-white align-middle">
+  <thead><tr><th><input type="checkbox" id="select-all-users" aria-label="Select all users"></th><th>Badge Name</th><th>Full Name</th><th>Email / Username</th><th>Role</th><th>Report To</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+    {% for u in users %}
+    <tr>
+      <td><input type="checkbox" name="user_ids" value="{{ u.id }}" class="bulk-user-checkbox" aria-label="Select {{ u.badge_name }}"></td>
+      <td>{{ u.badge_name }}</td>
+      <td>{{ u.full_name }}</td>
+      <td>{{ u.email or u.username }}{% if u.is_kiosk_account %} <span class="badge bg-info text-dark">kiosk</span>{% endif %}</td>
+      <td><span class="badge bg-secondary badge-role">{{ u.role }}</span></td>
+      <td>{{ u.report_to.badge_name if u.report_to else "-" }}</td>
+      <td>
+        {% if u.active %}<span class="badge bg-success">Active</span>
+        {% else %}<span class="badge bg-secondary">Inactive</span>{% endif %}
+      </td>
+      <td class="text-end text-nowrap">
+        <form method="POST" action="{{ url_for('admin.reset_password', user_id=u.id) }}" class="d-inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-outline-secondary" onclick="return confirm('Generate a new password for {{ u.badge_name }}?')">Reset PW</button>
+        </form>
+        {% if u.id != current_user.id %}
+          {% if u.active %}
+          <form method="POST" action="{{ url_for('admin.deactivate_user', user_id=u.id) }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-outline-warning" onclick="return confirm('Deactivate {{ u.badge_name }}? They will not be able to log in.')">Deactivate</button>
+          </form>
+          {% else %}
+          <form method="POST" action="{{ url_for('admin.activate_user', user_id=u.id) }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-outline-success">Activate</button>
+          </form>
+          {% endif %}
+          <form method="POST" action="{{ url_for('admin.delete_user', user_id=u.id) }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Permanently delete {{ u.badge_name }}? This can\'t be undone.')">Delete</button>
+          </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+</form>
+<p class="text-muted small">Deleting only works for accounts with no hours, claims, or shift history on record — deactivate instead to preserve that history.</p>
+
+<script>
+  const selectAllUsers = document.getElementById('select-all-users');
+  const userCheckboxes = document.querySelectorAll('.bulk-user-checkbox');
+
+  if (selectAllUsers) {
+    selectAllUsers.addEventListener('change', function () {
+      userCheckboxes.forEach(function (cb) {
+        cb.checked = selectAllUsers.checked;
+        if (cb.closest('tr').querySelector('.badge-role').textContent.trim() === 'admin') {
+          cb.checked = false;
+          cb.disabled = true;
+        } else {  
+          cb.disabled = false;
+        }
+      });
+    });
+  }
+</script>
+
+{% endblock %}
