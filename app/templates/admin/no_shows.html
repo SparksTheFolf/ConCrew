@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}No-Shows{% endblock %}
+{% block content %}
+<h3>No-Shows</h3>
+<p class="text-muted">Approved shifts that ended without the volunteer ever checking in. Marking one as a no-show frees the slot back up for reassignment.</p>
+
+{% if not con_year %}
+  <div class="alert alert-warning">No con year is currently marked active.</div>
+{% else %}
+
+<div class="table-responsive">
+<table class="table table-sm bg-white align-middle">
+  <thead><tr><th>Volunteer</th><th>Department</th><th>Shift</th><th>Date</th><th>Time</th><th></th></tr></thead>
+  <tbody>
+    {% for r in requests %}
+    <tr>
+      <td>{{ r.volunteer.badge_name }}</td>
+      <td>{{ r.shift_slot.department.name }}</td>
+      <td>{{ r.shift_slot.label or r.shift_slot.department.name }}</td>
+      <td>{{ r.shift_slot.shift_date.strftime('%a %m/%d') }}</td>
+      <td>{{ r.shift_slot.start_time.strftime('%H:%M') }}–{{ r.shift_slot.end_time.strftime('%H:%M') }}</td>
+      <td class="text-end">
+        <form method="POST" action="{{ url_for('admin.mark_no_show', request_id=r.id) }}" class="d-inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Mark {{ r.volunteer.badge_name }} as a no-show for this shift? This frees the slot up for reassignment.')">Mark no-show</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="text-muted">No no-shows to review 🎉</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+{% endblock %}

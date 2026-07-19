@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Roster{% endblock %}
+{% block content %}
+<h3>Roster {% if con_year %}— {{ con_year.label }}{% endif %}</h3>
+
+{% if pending_shift_requests %}
+<h5 class="mt-4">Pending Shift Requests ({{ pending_shift_requests|length }})</h5>
+<div class="table-responsive">
+<table class="table table-sm bg-white">
+  <thead><tr><th>Volunteer</th><th>Date</th><th>Dept</th><th>Time</th><th>Label</th><th></th></tr></thead>
+  <tbody>
+    {% for r in pending_shift_requests %}
+    <tr>
+      <td>{{ r.volunteer.badge_name }}</td>
+      <td>{{ r.shift_slot.shift_date }}</td>
+      <td>{{ r.shift_slot.department.name }}</td>
+      <td>{{ r.shift_slot.start_time.strftime('%H:%M') }}–{{ r.shift_slot.end_time.strftime('%H:%M') }}</td>
+      <td>{{ r.shift_slot.label or "" }}</td>
+      <td class="text-end">
+        <form method="POST" action="{{ url_for('calendar.approve_request', request_id=r.id) }}" class="d-inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-success">Approve</button>
+        </form>
+        <form method="POST" action="{{ url_for('calendar.deny_request', request_id=r.id) }}" class="d-inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-outline-danger">Deny</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
+{% if pending %}
+<h5 class="mt-4">Pending Hour Approvals ({{ pending|length }})</h5>
+<div class="table-responsive">
+<table class="table table-sm bg-white">
+  <thead><tr><th>Volunteer</th><th>Date</th><th>Dept</th><th>Hours</th><th>Task</th><th>Logged by</th><th></th></tr></thead>
+  <tbody>
+    {% for e in pending %}
+    <tr>
+      <td>{{ e.volunteer.badge_name }}</td>
+      <td>{{ e.work_date }}</td>
+      <td>{{ e.department.name }}</td>
+      <td>{{ e.hours }}</td>
+      <td>{{ e.task_description or "" }}</td>
+      <td>{{ e.logged_by.badge_name }}</td>
+      <td class="text-end">
+        <form method="POST" action="{{ url_for('assigner.approve_hours', entry_id=e.id) }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-success">Approve</button>
+        </form>
+        <form method="POST" action="{{ url_for('assigner.reject_hours', entry_id=e.id) }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-outline-danger">Reject</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
+<h5 class="mt-4">Volunteers</h5>
+<div class="table-responsive">
+<table class="table table-sm bg-white">
+  <thead><tr><th>Badge Name</th><th>Report To</th><th>Approved Hours</th><th>Current Tier</th></tr></thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r.user.badge_name }}</td>
+      <td>{{ r.user.report_to.badge_name if r.user.report_to else "-" }}</td>
+      <td>{{ r.hours }}</td>
+      <td>{{ r.tier.name if r.tier else "—" }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4" class="text-muted">No active con year or no volunteers yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

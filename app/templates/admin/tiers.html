@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Reward Tiers{% endblock %}
+{% block content %}
+<h3>Reward Tiers</h3>
+<form method="post" action="{{ url_for('admin.update_tiers') }}">
+  {% for tier in tiers %}
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="row g-3 mb-3">
+        <div class="col-md-8">
+          <label class="form-label" for="tier_name_{{ tier.id }}">Tier Name</label>
+          <input class="form-control" id="tier_name_{{ tier.id }}" name="tier_name_{{ tier.id }}" value="{{ tier.name }}" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label" for="tier_threshold_{{ tier.id }}">Threshold Hours</label>
+          <input class="form-control" id="tier_threshold_{{ tier.id }}" name="tier_threshold_{{ tier.id }}" type="number" min="0" step="0.25" value="{{ tier.threshold_hours }}" required>
+        </div>
+      </div>
+
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" name="delete_tier_{{ tier.id }}" id="delete_tier_{{ tier.id }}">
+        <label class="form-check-label" for="delete_tier_{{ tier.id }}">Delete this tier (if no claims exist for its items)</label>
+      </div>
+
+      <h6 class="mb-2">Items</h6>
+      {% for item in tier.items %}
+      <div class="row g-2 align-items-start mb-2">
+        <div class="col-md-4">
+          <input class="form-control" name="item_name_{{ item.id }}" value="{{ item.name }}" placeholder="Item name" required>
+        </div>
+        <div class="col-md-6">
+          <input class="form-control" name="item_desc_{{ item.id }}" value="{{ item.description or '' }}" placeholder="Description (optional)">
+        </div>
+        <div class="col-md-2 form-check pt-2">
+          <input class="form-check-input" type="checkbox" name="delete_item_{{ item.id }}" id="delete_item_{{ item.id }}">
+          <label class="form-check-label" for="delete_item_{{ item.id }}">Delete</label>
+        </div>
+      </div>
+      {% endfor %}
+
+      <label class="form-label mt-2" for="new_items_{{ tier.id }}">Add New Items</label>
+      <textarea class="form-control" id="new_items_{{ tier.id }}" name="new_items_{{ tier.id }}" rows="3" placeholder="One item per line. Use name|description for optional description."></textarea>
+    </div>
+  </div>
+  {% endfor %}
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <h5 class="mb-3">Add New Tier</h5>
+      <div class="row g-3">
+        <div class="col-md-8">
+          <label class="form-label" for="new_tier_name">Tier Name</label>
+          <input class="form-control" id="new_tier_name" name="new_tier_name" placeholder="e.g. 16 Hour Tier">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label" for="new_tier_threshold">Threshold Hours</label>
+          <input class="form-control" id="new_tier_threshold" name="new_tier_threshold" type="number" min="0" step="0.25" placeholder="e.g. 16">
+        </div>
+      </div>
+      <label class="form-label mt-3" for="new_tier_items">New Tier Items</label>
+      <textarea class="form-control" id="new_tier_items" name="new_tier_items" rows="3" placeholder="One item per line. Use name|description for optional description."></textarea>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" type="submit">Save Tier Changes</button>
+</form>
+{% endblock %}

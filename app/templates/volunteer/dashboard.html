@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}My Progress{% endblock %}
+{% block content %}
+
+{% if not con_year %}
+  <div class="alert alert-warning">No con year is currently marked active. Contact an admin.</div>
+{% else %}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+  <div>
+    <h3>Hi {{ current_user.badge_name }} 👋</h3>
+    <p class="text-muted">{{ con_year.label }} volunteer progress</p>
+  </div>
+  <a href="{{ url_for('calendar.swaps') }}" class="btn btn-sm btn-outline-primary">
+    Swap Shifts
+    {% if incoming_swap_count %}<span class="badge bg-danger">{{ incoming_swap_count }}</span>{% endif %}
+  </a>
+</div>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="d-flex justify-content-between mb-1">
+      <strong>{{ hours }} hours logged</strong>
+      {% if next_tier %}
+        <span class="text-muted">{{ remaining }}h to {{ next_tier.name }}</span>
+      {% else %}
+        <span class="text-success">Max tier reached 🎉</span>
+      {% endif %}
+    </div>
+    <div class="progress">
+      {% set pct = (hours / next_tier.threshold_hours * 100) if next_tier else 100 %}
+      <div class="progress-bar bg-success" style="width: {{ pct if pct <= 100 else 100 }}%">
+        {{ hours }}h
+      </div>
+    </div>
+  </div>
+</div>
+
+<h5 class="mt-4">My Shifts</h5>
+<div class="row">
+  <div class="col-md-6 mb-3">
+    <div class="card h-100">
+      <div class="card-header">Pending Requests ({{ pending_requests|length }})</div>
+      <div class="card-body">
+        {% for r in pending_requests %}
+          <div class="border-bottom pb-1 mb-1">
+            <strong>{{ r.shift_slot.label or r.shift_slot.department.name }}</strong><br>
+            <span class="small text-muted">{{ r.shift_slot.shift_date.strftime('%a %m/%d') }}, {{ r.shift_slot.start_time.strftime('%H:%M') }}–{{ r.shift_slot.end_time.strftime('%H:%M') }}</span>
+            <span class="badge bg-warning text-dark">Pending</span>
+          </div>
+        {% else %}
+          <p class="text-muted small mb-0">No pending requests.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6 mb-3">
+    <div class="card h-100">
+      <div class="card-header">Confirmed Shifts ({{ confirmed_requests|length }})</div>
+      <div class="card-body">
+        {% for r in confirmed_requests %}
+          <div class="border-bottom pb-1 mb-1">
+            <strong>{{ r.shift_slot.label or r.shift_slot.department.name }}</strong><br>
+            <span class="small text-muted">{{ r.shift_slot.shift_date.strftime('%a %m/%d') }}, {{ r.shift_slot.start_time.strftime('%H:%M') }}–{{ r.shift_slot.end_time.strftime('%H:%M') }}</span>
+            {% if r.status == 'approved' %}
+              <span class="badge bg-success">Confirmed</span>
+            {% elif r.status == 'in_progress' %}
+              <span class="badge bg-primary">In progress</span>
+            {% elif r.status == 'leave_requested' %}
+              <span class="badge bg-info text-dark">Leave requested</span>
+            {% elif r.status == 'leave_denied' %}
+              <span class="badge bg-danger">Leave denied</span>
+            {% endif %}
+            {% if r.status == 'approved' and r.can_check_in(now) %}
+              <form method="POST" action="{{ url_for('calendar.check_in_request', request_id=r.id) }}" class="mt-2 d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-success">Check in</button>
+              </form>
+            {% elif r.status == 'approved' %}
+              <div class="small text-muted mt-1">Check in opens 1 hour before the shift starts.</div>
+            {% endif %}
+            {% if r.status == 'in_progress' %}
+              <form method="POST" action="{{ url_for('calendar.check_out_request', request_id=r.id) }}" class="mt-2 d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-outline-success">End shift</button>
+              </form>
+              {% if r.checked_in_at %}
+                <div class="small text-muted mt-1">Started {{ r.checked_in_at.strftime('%H:%M') }}</div>
+              {% endif %}
+            {% endif %}
+            {% if r.status == 'approved' %}
+              <form method="POST" action="{{ url_for('calendar.request_leave', request_id=r.id) }}" class="mt-2">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label class="form-label small mb-1">Request leave of shift</label>
+                <textarea name="reason" class="form-control form-control-sm mb-1" rows="2" placeholder="Reason required" required></textarea>
+                <button class="btn btn-sm btn-outline-warning">Request leave</button>
+              </form>
+            {% endif %}
+          </div>
+          {% if r.status == 'leave_requested' %}
+            <div class="small text-muted">Leave requested: {{ r.notes }}</div>
+          {% elif r.status == 'leave_denied' %}
+            <div class="small text-danger">Leave denied: {{ r.notes }}</div>
+          {% endif %}
+        {% else %}
+          <p class="text-muted small mb-0">No confirmed shifts yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+<p class="small"><a href="{{ url_for('calendar.view') }}">Open the full calendar to request shifts or mark your availability →</a></p>
+
+<h5 class="mt-4">Reward Tiers</h5>
+<div class="row">
+  {% for tier in tiers %}
+    {% set reached = current_tier and tier.threshold_hours <= current_tier.threshold_hours %}
+    <div class="col-md-6 mb-3">
+      <div class="card tier-card {{ 'reached' if reached else '' }}">
+        <div class="card-body">
+          <h6 class="card-title">
+            {{ tier.name }} ({{ tier.threshold_hours }}h)
+            {% if reached %}<span class="badge bg-success">Unlocked</span>{% endif %}
+          </h6>
+          <ul class="list-unstyled mb-0">
+            {% for item in tier.items %}
+              {% set claim = my_claims.get(item.id) %}
+              <li class="mb-1">
+                {% if claim and claim.status == 'fulfilled' %}
+                  ✅ <s>{{ item.name }}</s> <span class="text-muted small">(picked up {{ claim.fulfilled_at.strftime('%m/%d') }})</span>
+                {% elif claim and claim.status == 'eligible' %}
+                  🟢 {{ item.name }} <span class="badge bg-success">Ready to claim</span>
+                {% else %}
+                  ⚪ {{ item.name }}
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<h5 class="mt-4">My Logged Hours</h5>
+<div class="table-responsive">
+<table class="table table-sm bg-white">
+  <thead>
+    <tr><th>Date</th><th>Department</th><th>Hours</th><th>Task</th><th>Status</th></tr>
+  </thead>
+  <tbody>
+    {% for e in my_entries %}
+    <tr>
+      <td>{{ e.work_date }}</td>
+      <td>{{ e.department.name }}</td>
+      <td>{{ e.hours }}</td>
+      <td>{{ e.task_description or "" }}</td>
+      <td>
+        {% if e.status == 'approved' %}<span class="badge bg-success">Approved</span>
+        {% elif e.status == 'pending' %}<span class="badge bg-warning text-dark">Pending</span>
+        {% else %}<span class="badge bg-danger">Rejected</span>{% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" class="text-muted">No hours logged yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+{% endif %}
+{% endblock %}

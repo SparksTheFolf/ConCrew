@@ -1,0 +1,338 @@
+body {
+  background-color: #f7f7f9;
+}
+
+/* Collapsible calendar day cards + nested "available volunteers" collapse */
+.calendar-day-caret {
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+.calendar-day-header[aria-expanded="true"] .calendar-day-caret {
+  transform: rotate(90deg);
+}
+
+[data-bs-theme="dark"] body {
+  background-color: #111827;
+}
+
+/* Sticky footer: footer's margin-top:auto eats the leftover space in the
+   flex column, so it sits at the bottom of the viewport on short pages
+   without being fixed/absolute (which would overlap short-page content). */
+.app-body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-main {
+  flex: 1 0 auto;
+}
+
+.app-footer {
+  flex-shrink: 0;
+  margin-top: auto;
+}
+
+[data-bs-theme="dark"] .bg-white {
+  background-color: var(--bs-secondary-bg) !important;
+}
+
+[data-bs-theme="dark"] .card.bg-white,
+[data-bs-theme="dark"] .card-body.bg-white,
+[data-bs-theme="dark"] table.bg-white {
+  color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .bg-light {
+  background-color: var(--bs-tertiary-bg) !important;
+  color: var(--bs-body-color) !important;
+}
+
+[data-bs-theme="dark"] .text-muted {
+  color: var(--bs-secondary-color) !important;
+}
+
+.compact-panel {
+  border-radius: 0.5rem;
+}
+
+.compact-panel .card-header,
+.compact-panel .card-body {
+  padding: 0.75rem;
+}
+
+.compact-slot {
+  font-size: 0.92rem;
+}
+
+/* Admin dashboard stat cards */
+.stat-card {
+  display: block;
+  background: #fff;
+  border-radius: 0.6rem;
+  padding: 1rem 1.15rem;
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid #e9ecef;
+  border-left: 4px solid var(--stat-accent, #868e96);
+  height: 100%;
+  transition: box-shadow .15s ease, transform .15s ease;
+}
+
+a.stat-card:hover {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+  color: inherit;
+}
+
+.stat-card-value {
+  font-size: 1.85rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.stat-card-label {
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin-top: 0.3rem;
+}
+
+.stat-card-hint {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+  color: var(--stat-accent, #868e96);
+}
+
+.stat-card-warning { --stat-accent: #f59f00; }
+.stat-card-info { --stat-accent: #1c7ed6; }
+.stat-card-success { --stat-accent: #2f9e44; }
+.stat-card-neutral { --stat-accent: #868e96; }
+
+[data-bs-theme="dark"] .stat-card {
+  background: var(--bs-secondary-bg);
+  border-color: #343a40;
+  color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .stat-card-label {
+  color: var(--bs-secondary-color);
+}
+
+.compact-meta {
+  line-height: 1.2;
+}
+
+.badge-tight {
+  font-size: 0.72rem;
+  line-height: 1;
+  padding: 0.25rem 0.45rem;
+}
+
+.compact-mini-btn {
+  line-height: 1;
+}
+
+.compact-assign-form .form-select {
+  min-width: 0;
+}
+
+.compact-grid-wrap {
+  overflow-x: auto;
+}
+
+.tier-card {
+  border-left: 4px solid #6c757d;
+}
+
+.tier-card.reached {
+  border-left: 4px solid #198754;
+  background-color: #f0fff4;
+}
+
+[data-bs-theme="dark"] .tier-card.reached {
+  background-color: #143723;
+  color: #e6f4ea;
+}
+
+[data-bs-theme="dark"] .tier-card.reached .text-muted {
+  color: #9dc9ab !important;
+}
+
+.progress {
+  height: 1.5rem;
+}
+
+.badge-role {
+  text-transform: uppercase;
+  font-size: 0.7rem;
+}
+
+/* Assign-a-volunteer typeahead search box on the shift calendar */
+.assign-search-wrap {
+  min-width: 140px;
+}
+
+.assign-search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  max-height: 220px;
+  overflow-y: auto;
+  display: none;
+}
+
+@media (max-width: 991.98px) {
+  .navbar-nav .nav-link {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+  .dropdown-menu {
+    border: none;
+    padding-left: 1rem;
+  }
+}
+
+/* Click-drag availability grid */
+.availability-grid {
+  display: inline-block;
+  min-width: 100%;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.avail-header-row, .avail-row {
+  display: grid;
+  grid-template-columns: 58px repeat(var(--avail-days, 5), minmax(72px, 1fr));
+}
+
+.avail-time-label {
+  font-size: 0.72rem;
+  color: #6c757d;
+  padding: 2px 4px;
+  display: flex;
+  align-items: center;
+}
+
+.avail-day-header {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 3px 2px;
+  border-bottom: 2px solid #333;
+}
+
+.avail-cell {
+  height: 18px;
+  border: 1px solid #e9ecef;
+  background: #fff;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.avail-cell:hover {
+  background: #eef7ff;
+}
+
+.avail-cell.selecting {
+  background: #9fd3ff;
+}
+
+.avail-cell.available {
+  background: #4caf50;
+  border-color: #388e3c;
+}
+
+.avail-cell.available:hover {
+  background: #e57373;
+}
+
+/* Hourly (24hr) shift calendar view for staff */
+.shift-hour-grid {
+  display: inline-block;
+  min-width: 100%;
+}
+
+.shift-hour-header-row, .shift-hour-row {
+  display: grid;
+  grid-template-columns: 58px repeat(var(--shift-days, 5), minmax(150px, 1fr));
+}
+
+.shift-hour-time-label {
+  font-size: 0.72rem;
+  color: #6c757d;
+  padding: 2px 4px;
+  display: flex;
+  align-items: center;
+}
+
+.shift-hour-day-header {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 3px 2px;
+  border-bottom: 2px solid #333;
+}
+
+.shift-hour-cell {
+  min-height: 32px;
+  border: 1px solid #e9ecef;
+  padding: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.shift-chip {
+  font-size: 0.68rem;
+  line-height: 1.2;
+  padding: 2px 4px;
+  border-radius: 3px;
+  background: #e7f5ec;
+  border: 1px solid #37b24d;
+}
+
+.shift-chip.full {
+  background: #f1f3f5;
+  border-color: #adb5bd;
+  color: #495057;
+}
+
+.shift-chip-title {
+  font-weight: 600;
+}
+
+.shift-chip-names {
+  color: #495057;
+}
+
+.shift-chip.full .shift-chip-names {
+  color: #6c757d;
+}
+
+[data-bs-theme="dark"] .shift-hour-day-header {
+  border-bottom-color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .shift-hour-cell {
+  border-color: #343a40;
+}
+
+[data-bs-theme="dark"] .shift-chip {
+  background: #1f3d2b;
+  border-color: #37b24d;
+  color: #d3f9d8;
+}
+
+[data-bs-theme="dark"] .shift-chip.full {
+  background: #2b2f33;
+  border-color: #495057;
+  color: #ced4da;
+}
+
+[data-bs-theme="dark"] .shift-chip-names {
+  color: #ced4da;
+}

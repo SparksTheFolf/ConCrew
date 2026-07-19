@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{{ "Password Reset" if is_reset else "Account Created" }}{% endblock %}
+{% block content %}
+<style>
+  @media print {
+    nav,
+    .alert,
+    .no-print {
+      display: none !important;
+    }
+
+    .print-card {
+      max-width: 100% !important;
+      border: 1px solid #000 !important;
+    }
+  }
+</style>
+<h3>{{ "Password Reset ✅" if is_reset else "Account Created ✅" }}</h3>
+
+<div class="card card-body bg-white print-card" style="max-width: 500px;">
+  {% if is_reset %}
+  <p>New password generated for <strong>{{ user.badge_name }}</strong>. Write it down or print it now — it won't be shown again.</p>
+  {% else %}
+  <p>Kiosk account created for <strong>{{ user.badge_name }}</strong>. Write these down or print them now — the password won't be shown again.</p>
+  {% endif %}
+  <table class="table table-bordered">
+    <tr><th>Username</th><td>{{ credentials.username }}</td></tr>
+    <tr><th>Password</th><td><code>{{ credentials.password }}</code></td></tr>
+    <tr><th>Volunteer Code</th><td>{{ user.usercode }}</td></tr>
+  </table>
+  <div class="no-print d-grid gap-2">
+    <button type="button" class="btn btn-outline-secondary" onclick="window.print()">Print Credentials</button>
+    <a href="{{ url_for('admin.users') }}" class="btn btn-primary">Done</a>
+  </div>
+  {% if not is_reset %}
+  <a href="{{ url_for('admin.new_user') }}" class="btn btn-outline-secondary mt-2 no-print">Add Another User</a>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Shift Eligibility{% endblock %}
+{% block content %}
+<h3>Shift Pickup Eligibility</h3>
+<p class="text-muted small">Check a box to let that volunteer see and request open shifts for that department on the calendar. Unchecked = hidden for them.</p>
+
+{% if not departments %}
+<div class="alert alert-warning">You don't manage any departments yet.</div>
+{% elif not volunteers %}
+<div class="alert alert-info">No volunteers yet.</div>
+{% else %}
+<form method="POST">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="table-responsive">
+    <table class="table table-sm table-bordered bg-white">
+      <thead>
+        <tr>
+          <th>Volunteer</th>
+          {% for d in departments %}<th class="text-center">{{ d.name }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in volunteers %}
+        <tr>
+          <td>{{ v.badge_name }}</td>
+          {% for d in departments %}
+          <td class="text-center">
+            <input type="checkbox" name="elig_{{ v.id }}_{{ d.id }}"
+                   {{ "checked" if (v.id, d.id) in current_pairs else "" }}>
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <button class="btn btn-primary">Save Eligibility</button>
+</form>
+{% endif %}
+{% endblock %}

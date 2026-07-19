@@ -1,0 +1,733 @@
+{% extends "base.html" %}
+{% block title %}Volunteer Calendar{% endblock %}
+{% block content %}
+<h3>{{ con_year.con_name or "Volunteer" }} Calendar</h3>
+<p class="text-muted">{{ con_year.start_date }} – {{ con_year.end_date }}</p>
+
+<div class="card card-body mb-3">
+  <form method="GET" action="{{ url_for('calendar.view') }}" class="row g-2 align-items-end">
+    <div class="col-6 col-md-3">
+      <label class="form-label small">Department</label>
+      <select name="department_id" class="form-select form-select-sm">
+        <option value="">All departments</option>
+        {% for dep in departments %}
+          <option value="{{ dep.id }}" {% if filter_department_id == dep.id %}selected{% endif %}>{{ dep.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-3 col-md-2">
+      <label class="form-label small">Starts after</label>
+      <select name="start_hour" class="form-select form-select-sm">
+        <option value="">Any</option>
+        {% for hour in range(0, 24) %}
+          <option value="{{ hour }}" {% if filter_start_hour == hour %}selected{% endif %}>{{ "%02d:00"|format(hour) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-3 col-md-2">
+      <label class="form-label small">Ends before</label>
+      <select name="end_hour" class="form-select form-select-sm">
+        <option value="">Any</option>
+        {% for hour in range(1, 25) %}
+          <option value="{{ hour }}" {% if filter_end_hour == hour %}selected{% endif %}>{{ "24:00" if hour == 24 else "%02d:00"|format(hour) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label small">Min length (hrs)</label>
+      <input type="number" name="min_length" step="0.25" min="0" class="form-control form-control-sm" value="{{ filter_min_length if filter_min_length is not none else '' }}">
+    </div>
+    <div class="col-6 col-md-3 d-flex gap-2">
+      <button class="btn btn-sm btn-primary">Apply filters</button>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('calendar.view') }}">Clear</a>
+    </div>
+  </form>
+</div>
+
+{% if can_manage %}
+<div class="card card-body mb-4">
+  <ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#single-slot-pane" type="button" role="tab">Add a Shift Slot</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#bulk-slot-pane" type="button" role="tab">Recurring (multiple days)</button>
+    </li>
+  </ul>
+  <div class="tab-content">
+    <div class="tab-pane fade show active" id="single-slot-pane" role="tabpanel">
+      <form method="POST" action="{{ url_for('calendar.new_slot') }}" class="row g-2 align-items-end"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="col-6 col-md-2">
+          <label class="form-label small">Date</label>
+          <select name="shift_date" class="form-select form-select-sm" required>
+            {% for d in days %}<option value="{{ d }}">{{ d.strftime('%a %m/%d') }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label small">Department</label>
+          <select name="department_id" class="form-select form-select-sm" required>
+            {% for dep in departments %}
+              {% if current_user.role == 'admin' or dep.id in managed_dept_ids %}
+                <option value="{{ dep.id }}">{{ dep.name }}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label small">Start</label>
+          <input type="time" name="start_time" class="form-control form-control-sm" required>
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label small">End</label>
+          <input type="time" name="end_time" class="form-control form-control-sm" required>
+        </div>
+        <div class="col-6 col-md-1">
+          <label class="form-label small">Capacity</label>
+          <input type="number" name="capacity" min="1" value="1" class="form-control form-control-sm" required>
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label small">Label</label>
+          <input type="text" name="label" class="form-control form-control-sm" placeholder="Morning desk">
+        </div>
+        <div class="col-12 col-md-1">
+          <button class="btn btn-sm btn-primary w-100">Add</button>
+        </div>
+      </form>
+    </div>
+    <div class="tab-pane fade" id="bulk-slot-pane" role="tabpanel">
+      <form method="POST" action="{{ url_for('calendar.bulk_new_slots') }}" class="row g-2 align-items-end"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="col-12">
+          <label class="form-label small d-block">Days</label>
+          {% for d in days %}
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="checkbox" name="shift_dates" value="{{ d }}" id="bulk-day-{{ loop.index }}">
+              <label class="form-check-label small" for="bulk-day-{{ loop.index }}">{{ d.strftime('%a %m/%d') }}</label>
+            </div>
+          {% endfor %}
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label small">Department</label>
+          <select name="department_id" class="form-select form-select-sm" required>
+            {% for dep in departments %}
+              {% if current_user.role == 'admin' or dep.id in managed_dept_ids %}
+                <option value="{{ dep.id }}">{{ dep.name }}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label small">Start</label>
+          <input type="time" name="start_time" class="form-control form-control-sm" required>
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label small">End</label>
+          <input type="time" name="end_time" class="form-control form-control-sm" required>
+        </div>
+        <div class="col-6 col-md-1">
+          <label class="form-label small">Capacity</label>
+          <input type="number" name="capacity" min="1" value="1" class="form-control form-control-sm" required>
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label small">Label</label>
+          <input type="text" name="label" class="form-control form-control-sm" placeholder="Registration desk">
+        </div>
+        <div class="col-12 col-md-2">
+          <button class="btn btn-sm btn-primary w-100">Create Slots</button>
+        </div>
+      </form>
+      <p class="small text-muted mt-2 mb-0">Creates the same shift on every day you check. Days that already have a matching slot are skipped.</p>
+    </div>
+  </div>
+</div>
+
+
+{% if current_user.role == 'volunteer' %}
+<div class="card mb-4">
+  <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center flex-wrap">
+    <span>My Availability</span>
+    <span class="small fw-normal">Click and drag to mark when you're free</span>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <div id="availability-grid" class="availability-grid"></div>
+    </div>
+    <p class="small text-muted mt-2 mb-0">This just tells staff when you're around — it doesn't request a shift by itself. Click a green cell to remove it.</p>
+  </div>
+</div>
+{% endif %}
+
+<h5>{{ "Open Shifts You Can Pick Up" if current_user.role == 'volunteer' else "Shift Calendar" }}</h5>
+
+{% if current_user.role == 'volunteer' and not eligible_dept_ids %}
+<div class="alert alert-info">You haven't been approved to pick up shifts for any department yet. Ask an admin or your assigner to grant you shift eligibility.</div>
+{% endif %}
+
+{% if can_manage %}
+<div class="d-flex align-items-center gap-2 mb-3">
+  <div class="btn-group" role="group" aria-label="Calendar view toggle">
+    <button type="button" class="btn btn-sm btn-outline-secondary active" id="view-toggle-cards">Card view</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="view-toggle-hourly">Hourly view</button>
+  </div>
+  <span class="small text-muted">Hourly view shows who's on shift at each hour, across the whole day.</span>
+</div>
+
+<div id="calendar-hourly-view" style="display:none;">
+  <div class="d-flex gap-3 small text-muted mb-2">
+    <span><span class="shift-chip d-inline-block px-2">&nbsp;</span> Open spot(s)</span>
+    <span><span class="shift-chip full d-inline-block px-2">&nbsp;</span> Full</span>
+  </div>
+  <div class="table-responsive mb-4">
+    <div id="hourly-shift-grid" class="shift-hour-grid"></div>
+  </div>
+</div>
+{% endif %}
+
+<div class="row" id="calendar-card-view">
+  {% for day in days %}
+  <div class="col-lg-4 mb-4">
+    <div class="card h-100">
+      <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center calendar-day-header"
+           style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#day-collapse-{{ loop.index }}"
+           role="button" tabindex="0" aria-expanded="false" aria-controls="day-collapse-{{ loop.index }}">
+        <span>{{ day.strftime('%A, %b %d') }}</span>
+        <span class="d-flex align-items-center gap-2">
+          <span class="small fw-normal">{{ slots_by_day[day]|length }} shift{{ "s" if slots_by_day[day]|length != 1 else "" }}</span>
+          <span class="calendar-day-caret">▸</span>
+        </span>
+      </div>
+      <div class="collapse" id="day-collapse-{{ loop.index }}">
+      <div class="card-body">
+        {% for slot in slots_by_day[day] %}
+          <div class="border rounded p-2 mb-2 {{ 'bg-light' if slot.is_full() else '' }}">
+            <div class="d-flex justify-content-between">
+              <strong>{{ slot.label or slot.department.name }}</strong>
+              <span class="badge {{ 'bg-secondary' if slot.is_full() else 'bg-success' }}">
+                {{ slot.approved_count() }}/{{ slot.capacity }}
+              </span>
+            </div>
+            <div class="small text-muted">{{ slot.department.name }} • {{ slot.start_time.strftime('%H:%M') }}–{{ slot.end_time.strftime('%H:%M') }} ({{ slot.hours() }}h)</div>
+
+            {% if current_user.role == 'volunteer' %}
+              {% set my_req = my_request_by_slot.get(slot.id) %}
+              {% if my_req and my_req.status == 'approved' %}
+                <span class="badge bg-success mt-1">You're scheduled ✅</span>
+                {% if my_req.can_check_in(now) %}
+                  <form method="POST" action="{{ url_for('calendar.check_in_request', request_id=my_req.id) }}" class="mt-2 d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-sm btn-success">Check in</button>
+                  </form>
+                {% else %}
+                  <div class="small text-muted mt-1">Check in opens 1 hour before the shift starts.</div>
+                {% endif %}
+                <form method="POST" action="{{ url_for('calendar.request_leave', request_id=my_req.id) }}" class="mt-2">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <label class="form-label small mb-1">Request leave of shift</label>
+                  <textarea name="reason" class="form-control form-control-sm mb-1" rows="2" placeholder="Reason required" required></textarea>
+                  <button class="btn btn-sm btn-outline-warning">Request leave</button>
+                </form>
+              {% elif my_req and my_req.status == 'in_progress' %}
+                <span class="badge bg-primary mt-1">In progress</span>
+                <form method="POST" action="{{ url_for('calendar.check_out_request', request_id=my_req.id) }}" class="mt-2 d-inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="btn btn-sm btn-outline-success">End shift</button>
+                </form>
+                {% if my_req.checked_in_at %}
+                  <div class="small text-muted mt-1">Started {{ my_req.checked_in_at.strftime('%H:%M') }}</div>
+                {% endif %}
+              {% elif my_req and my_req.status == 'requested' %}
+                <span class="badge bg-warning text-dark mt-1">Requested — pending</span>
+                <form method="POST" action="{{ url_for('calendar.cancel_request', request_id=my_req.id) }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="btn btn-sm btn-link p-0 ms-1">cancel</button>
+                </form>
+              {% elif my_req and my_req.status == 'leave_requested' %}
+                <span class="badge bg-info text-dark mt-1">Leave requested</span>
+                <div class="small text-muted">{{ my_req.notes }}</div>
+              {% elif my_req and my_req.status == 'denied' %}
+                <span class="badge bg-danger mt-1">Denied</span>
+              {% elif my_req and my_req.status == 'leave_denied' %}
+                <span class="badge bg-danger mt-1">Leave denied</span>
+                <div class="small text-muted">{{ my_req.notes }}</div>
+              {% elif slot.is_full() %}
+                <span class="badge bg-secondary mt-1">Full</span>
+              {% else %}
+                <form method="POST" action="{{ url_for('calendar.request_slot', slot_id=slot.id) }}" class="mt-1"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="btn btn-sm btn-outline-primary">Request this shift</button>
+                </form>
+              {% endif %}
+            {% endif %}
+
+            {% if can_manage %}
+              <div class="mt-2 small">
+                {% for r in slot.requests if r.status != 'cancelled' %}
+                  <div class="d-flex justify-content-between align-items-center border-top pt-1 mt-1">
+                    <span>
+                      {{ r.volunteer.badge_name }}
+                      {% if r.status == 'approved' %}<span class="badge bg-success">Approved</span>
+                      {% elif r.status == 'in_progress' %}<span class="badge bg-primary">In progress</span>
+                      {% elif r.status == 'requested' %}<span class="badge bg-warning text-dark">Pending</span>
+                      {% elif r.status == 'denied' %}<span class="badge bg-danger">Denied</span>
+                      {% elif r.status == 'no_show' %}<span class="badge bg-dark">No-show</span>{% endif %}
+                      {% if r.status == 'leave_requested' %}<span class="badge bg-info text-dark">Leave requested</span>{% endif %}
+                      {% if r.status == 'leave_denied' %}<span class="badge bg-danger">Leave denied</span>{% endif %}
+                    </span>
+                    {% if r.status == 'requested' %}
+                    <span>
+                      <form method="POST" action="{{ url_for('calendar.approve_request', request_id=r.id) }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="btn btn-sm btn-success py-0 px-1">✓</button>
+                      </form>
+                      <form method="POST" action="{{ url_for('calendar.deny_request', request_id=r.id) }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="btn btn-sm btn-outline-danger py-0 px-1">✗</button>
+                      </form>
+                    </span>
+                    {% elif r.status == 'leave_requested' %}
+                    <span class="text-end">
+                      <form method="POST" action="{{ url_for('calendar.approve_request', request_id=r.id) }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="btn btn-sm btn-success py-0 px-1">Approve leave</button>
+                      </form>
+                      <form method="POST" action="{{ url_for('calendar.deny_request', request_id=r.id) }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="btn btn-sm btn-outline-danger py-0 px-1">Keep shift</button>
+                      </form>
+                    </span>
+                    {% elif r.status == 'approved' %}
+                    <span class="d-inline-flex align-items-center gap-1 flex-wrap">
+                      <form method="POST" action="{{ url_for('calendar.notify_request', request_id=r.id) }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="btn btn-sm btn-outline-info py-0 px-1">Email volunteer</button>
+                      </form>
+                      <a class="btn btn-sm btn-outline-primary py-0 px-1" href="{{ url_for('assigner.log_hours', volunteer_id=r.volunteer.id, department_id=slot.department_id, work_date=slot.shift_date, hours=slot.hours(), task_description=(slot.label or slot.department.name)) }}">Log hours</a>
+                      <form method="POST" action="{{ url_for('calendar.cancel_request', request_id=r.id) }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="return confirm('Remove {{ r.volunteer.badge_name }} from this shift?')">Remove</button>
+                      </form>
+                    </span>
+                    {% endif %}
+                  </div>
+                {% else %}
+                  <span class="text-muted">No requests yet</span>
+                {% endfor %}
+              </div>
+
+              {% if not slot.is_full() %}
+              <form method="POST" action="{{ url_for('calendar.assign_slot', slot_id=slot.id) }}" class="mt-2 d-flex gap-1 assign-slot-form" data-department-id="{{ slot.department_id }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="position-relative assign-search-wrap flex-grow-1">
+                  <input type="text" class="form-control form-control-sm assign-search-input" placeholder="Search volunteer..." autocomplete="off">
+                  <input type="hidden" name="volunteer_id" class="assign-volunteer-id">
+                  <div class="list-group assign-search-results"></div>
+                </div>
+                <div class="form-check align-self-center text-nowrap ms-1">
+                  <input class="form-check-input" type="checkbox" name="send_email" id="send-email-{{ slot.id }}" checked>
+                  <label class="form-check-label small" for="send-email-{{ slot.id }}">Email</label>
+                </div>
+                <button type="submit" class="btn btn-sm btn-primary text-nowrap d-inline-flex align-items-center gap-1">
+                  <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                  <span class="assign-btn-label">Assign</span>
+                </button>
+              </form>
+              {% endif %}
+
+              <form method="POST" action="{{ url_for('calendar.delete_slot', slot_id=slot.id) }}" class="mt-2"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-outline-secondary py-0">Delete slot</button>
+              </form>
+            {% endif %}
+          </div>
+        {% else %}
+          <p class="text-muted small">No open shifts here.</p>
+        {% endfor %}
+
+        {% if can_manage and all_availability_by_day[day] %}
+          <div class="mt-3 pt-2 border-top">
+            <button class="btn btn-sm btn-link p-0 small fw-bold text-muted text-decoration-none calendar-day-header"
+                    type="button" data-bs-toggle="collapse" data-bs-target="#avail-collapse-{{ loop.index }}"
+                    aria-expanded="false" aria-controls="avail-collapse-{{ loop.index }}">
+              <span class="calendar-day-caret">▸</span>
+              Volunteers available this day ({{ all_availability_by_day[day]|length }})
+            </button>
+            <div class="collapse mt-1" id="avail-collapse-{{ loop.index }}">
+              {% for block in all_availability_by_day[day] %}
+                <div class="small">{{ block.volunteer.badge_name }} — {{ block.start_time.strftime('%H:%M') }}–{{ block.end_time.strftime('%H:%M') }}</div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+      </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+
+  <div class="card card-body mb-4">
+  <h5>Auto-Assign Volunteers</h5>
+  <p class="small text-muted">
+    Fills open shifts with eligible volunteers automatically, based on shift eligibility and marked
+    availability. This only builds a preview first -- nothing is assigned or changed until you review
+    it and explicitly confirm.
+  </p>
+  <form method="POST" action="{{ url_for('calendar.auto_assign_preview') }}" class="row g-2 align-items-end">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="col-12 col-md-4">
+      <label class="form-label small">Department scope</label>
+      <select name="department_id" class="form-select form-select-sm">
+        <option value="">{{ "All Departments" if current_user.role == 'admin' else "All my departments" }}</option>
+        {% for dep in departments %}
+          {% if current_user.role == 'admin' or dep.id in managed_dept_ids %}
+            <option value="{{ dep.id }}">{{ dep.name }}</option>
+          {% endif %}
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-12 col-md-3">
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" name="send_email" id="auto-assign-send-email" checked>
+        <label class="form-check-label small" for="auto-assign-send-email">Email newly assigned volunteers</label>
+      </div>
+    </div>
+    <div class="col-12 col-md-5 d-flex gap-2">
+      <button type="submit" name="mode" value="assign" class="btn btn-sm btn-primary flex-grow-1">
+        Auto-Assign Open Shifts
+      </button>
+      <button type="submit" name="mode" value="reassign" class="btn btn-sm btn-outline-danger flex-grow-1">
+        Reassign All
+      </button>
+    </div>
+  </form>
+  <p class="small text-muted mt-2 mb-0">
+    <strong>Auto-Assign</strong> only fills currently open spots. <strong>Reassign All</strong> clears
+    every existing assignment in scope first, then re-fills every slot from scratch -- use it to redo
+    the schedule after eligibility changes.
+  </p>
+</div>
+{% endif %}
+
+</div>
+
+{% if current_user.role == 'volunteer' %}
+<script>
+(function () {
+  const DAYS = {{ days | map('string') | list | tojson }};
+  const HOURS = Array.from({length: 17}, (_, i) => i + 7); // 7:00 - 23:00
+
+  // Existing blocks, keyed by date -> list of {id, start_hour, end_hour}
+  const existing = {
+    {% for day in days %}
+    "{{ day.isoformat() }}": [
+      {% for block in my_availability_by_day[day] %}
+      { id: {{ block.id }}, start: {{ block.start_time.hour }}, end: {{ block.end_time.hour if block.end_time.minute == 0 else block.end_time.hour + 1 }} }{{ "," if not loop.last }}
+      {% endfor %}
+    ]{{ "," if not loop.last }}
+    {% endfor %}
+  };
+
+  const dayLabels = {
+    {% for day in days %}"{{ day.isoformat() }}": "{{ day.strftime('%a %m/%d') }}"{{ "," if not loop.last }}{% endfor %}
+  };
+
+  const grid = document.getElementById('availability-grid');
+  const csrfToken = "{{ csrf_token() }}";
+
+  function buildGrid() {
+    grid.style.setProperty('--avail-days', DAYS.length);
+    let html = '<div class="avail-header-row"><div class="avail-time-label"></div>';
+    for (const d of DAYS) {
+      html += `<div class="avail-day-header">${dayLabels[d]}</div>`;
+    }
+    html += '</div>';
+
+    for (const hour of HOURS) {
+      html += `<div class="avail-row"><div class="avail-time-label">${String(hour).padStart(2,'0')}:00</div>`;
+      for (const d of DAYS) {
+        html += `<div class="avail-cell" data-date="${d}" data-hour="${hour}"></div>`;
+      }
+      html += '</div>';
+    }
+    grid.innerHTML = html;
+
+    // paint existing blocks
+    for (const d of DAYS) {
+      for (const block of (existing[d] || [])) {
+        for (let h = block.start; h < block.end; h++) {
+          const cell = grid.querySelector(`.avail-cell[data-date="${d}"][data-hour="${h}"]`);
+          if (cell) { cell.classList.add('available'); cell.dataset.blockId = block.id; }
+        }
+      }
+    }
+  }
+
+  buildGrid();
+
+  let dragging = false;
+  let dragDate = null;
+  let dragStartHour = null;
+
+  function cellsInRange(date, h1, h2) {
+    const lo = Math.min(h1, h2), hi = Math.max(h1, h2);
+    const cells = [];
+    for (let h = lo; h <= hi; h++) {
+      const c = grid.querySelector(`.avail-cell[data-date="${date}"][data-hour="${h}"]`);
+      if (c) cells.push(c);
+    }
+    return cells;
+  }
+
+  function clearSelecting() {
+    grid.querySelectorAll('.avail-cell.selecting').forEach(c => c.classList.remove('selecting'));
+  }
+
+  function startDrag(cell) {
+    if (cell.classList.contains('available')) return; // handled by click-to-remove
+    dragging = true;
+    dragDate = cell.dataset.date;
+    dragStartHour = parseInt(cell.dataset.hour, 10);
+    cell.classList.add('selecting');
+  }
+
+  function extendDrag(cell) {
+    if (!dragging || cell.dataset.date !== dragDate) return;
+    clearSelecting();
+    cellsInRange(dragDate, dragStartHour, parseInt(cell.dataset.hour, 10)).forEach(c => {
+      if (!c.classList.contains('available')) c.classList.add('selecting');
+    });
+  }
+
+  function endDrag(cell) {
+    if (!dragging) return;
+    dragging = false;
+    if (!cell || cell.dataset.date !== dragDate) { clearSelecting(); return; }
+    const endHour = parseInt(cell.dataset.hour, 10);
+    const lo = Math.min(dragStartHour, endHour);
+    const hi = Math.max(dragStartHour, endHour);
+    clearSelecting();
+    saveAvailability(dragDate, lo, hi + 1);
+  }
+
+  function saveAvailability(date, startHour, endHour) {
+    const body = new URLSearchParams({
+      avail_date: date,
+      start_time: `${String(startHour).padStart(2,'0')}:00`,
+      end_time: `${String(endHour).padStart(2,'0')}:00`,
+      csrf_token: csrfToken,
+    });
+    fetch("{{ url_for('calendar.add_availability') }}", { method: 'POST', body })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) { alert(data.error); return; }
+        for (let h = startHour; h < endHour; h++) {
+          const c = grid.querySelector(`.avail-cell[data-date="${date}"][data-hour="${h}"]`);
+          if (c) { c.classList.add('available'); c.dataset.blockId = data.id; }
+        }
+      });
+  }
+
+  function removeBlock(blockId, cells) {
+    const body = new URLSearchParams({ csrf_token: csrfToken });
+    fetch(`/calendar/availability/${blockId}/delete`, {
+      method: 'POST', body, headers: { 'X-Requested-With': 'fetch' }
+    })
+      .then(r => r.json())
+      .then(() => {
+        cells.forEach(c => { c.classList.remove('available'); delete c.dataset.blockId; });
+      });
+  }
+
+  // Mouse events
+  grid.addEventListener('mousedown', e => {
+    const cell = e.target.closest('.avail-cell');
+    if (!cell) return;
+    if (cell.classList.contains('available')) {
+      const blockId = cell.dataset.blockId;
+      const cells = Array.from(grid.querySelectorAll(`.avail-cell[data-block-id="${blockId}"]`));
+      removeBlock(blockId, cells);
+      return;
+    }
+    startDrag(cell);
+  });
+  grid.addEventListener('mouseover', e => {
+    const cell = e.target.closest('.avail-cell');
+    if (cell) extendDrag(cell);
+  });
+  document.addEventListener('mouseup', e => {
+    const cell = e.target.closest && e.target.closest('.avail-cell');
+    endDrag(cell);
+  });
+
+  // Touch events (mobile "hold and drag")
+  grid.addEventListener('touchstart', e => {
+    const cell = e.target.closest('.avail-cell');
+    if (!cell) return;
+    if (cell.classList.contains('available')) {
+      const blockId = cell.dataset.blockId;
+      const cells = Array.from(grid.querySelectorAll(`.avail-cell[data-block-id="${blockId}"]`));
+      removeBlock(blockId, cells);
+      return;
+    }
+    startDrag(cell);
+  }, { passive: true });
+  grid.addEventListener('touchmove', e => {
+    const touch = e.touches[0];
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    const cell = el && el.closest('.avail-cell');
+    if (cell) extendDrag(cell);
+  }, { passive: true });
+  grid.addEventListener('touchend', e => {
+    const touch = e.changedTouches[0];
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    const cell = el && el.closest('.avail-cell');
+    endDrag(cell);
+  });
+})();
+</script>
+{% endif %}
+
+{% if can_manage %}
+<script>
+(function () {
+  const DAYS = {{ days | map('string') | list | tojson }};
+  const dayLabels = {
+    {% for day in days %}"{{ day.isoformat() }}": "{{ day.strftime('%a %m/%d') }}"{{ "," if not loop.last }}{% endfor %}
+  };
+
+  // Shift slots, keyed by date -> list of {start, end, title, capacity, approved, is_full, names}
+  const shiftsByDay = {{ hourly_shifts_by_day | tojson }};
+
+  const HOURS = Array.from({length: 24}, (_, i) => i);
+  const hourlyGrid = document.getElementById('hourly-shift-grid');
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function buildHourlyGrid() {
+    hourlyGrid.style.setProperty('--shift-days', DAYS.length);
+    let html = '<div class="shift-hour-header-row"><div class="shift-hour-time-label"></div>';
+    for (const d of DAYS) {
+      html += `<div class="shift-hour-day-header">${dayLabels[d]}</div>`;
+    }
+    html += '</div>';
+
+    for (const hour of HOURS) {
+      html += `<div class="shift-hour-row"><div class="shift-hour-time-label">${String(hour).padStart(2,'0')}:00</div>`;
+      for (const d of DAYS) {
+        const slots = (shiftsByDay[d] || []).filter(s => hour >= s.start && hour < s.end);
+        html += '<div class="shift-hour-cell">';
+        for (const s of slots) {
+          const names = s.names.length ? escapeHtml(s.names.join(', ')) : 'Unassigned';
+          html += `<div class="shift-chip ${s.is_full ? 'full' : ''}">` +
+                  `<div class="shift-chip-title">${escapeHtml(s.title)} (${s.approved}/${s.capacity})</div>` +
+                  `<div class="shift-chip-names">${names}</div></div>`;
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+    hourlyGrid.innerHTML = html;
+  }
+
+  const cardView = document.getElementById('calendar-card-view');
+  const hourlyView = document.getElementById('calendar-hourly-view');
+  const cardsBtn = document.getElementById('view-toggle-cards');
+  const hourlyBtn = document.getElementById('view-toggle-hourly');
+  let built = false;
+
+  cardsBtn.addEventListener('click', () => {
+    cardView.style.display = '';
+    hourlyView.style.display = 'none';
+    cardsBtn.classList.add('active');
+    hourlyBtn.classList.remove('active');
+  });
+  hourlyBtn.addEventListener('click', () => {
+    if (!built) { buildHourlyGrid(); built = true; }
+    cardView.style.display = 'none';
+    hourlyView.style.display = '';
+    hourlyBtn.classList.add('active');
+    cardsBtn.classList.remove('active');
+  });
+})();
+</script>
+{% endif %}
+
+<script>
+(function () {
+  const VOLUNTEERS = {{ volunteers_for_assign | tojson }};
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  document.querySelectorAll('.assign-slot-form').forEach(form => {
+    const deptId = parseInt(form.dataset.departmentId, 10);
+    const wrap = form.querySelector('.assign-search-wrap');
+    const searchInput = wrap.querySelector('.assign-search-input');
+    const hiddenInput = wrap.querySelector('.assign-volunteer-id');
+    const resultsBox = wrap.querySelector('.assign-search-results');
+
+    function renderResults(query) {
+      const q = query.trim().toLowerCase();
+      let matches = VOLUNTEERS.filter(v => v.name.toLowerCase().includes(q));
+      matches.sort((a, b) => {
+        const aElig = a.eligible_dept_ids.includes(deptId);
+        const bElig = b.eligible_dept_ids.includes(deptId);
+        if (aElig !== bElig) return aElig ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
+      matches = matches.slice(0, 8);
+
+      if (!matches.length) {
+        resultsBox.innerHTML = '<div class="list-group-item small text-muted">No matches</div>';
+        resultsBox.style.display = 'block';
+        return;
+      }
+
+      resultsBox.innerHTML = matches.map(v => {
+        const eligible = v.eligible_dept_ids.includes(deptId);
+        return `<button type="button" class="list-group-item list-group-item-action py-1 px-2 small" data-id="${v.id}" data-name="${escapeHtml(v.name)}">` +
+               `${escapeHtml(v.name)}${eligible ? ' <span class="text-success">★</span>' : ''}</button>`;
+      }).join('');
+      resultsBox.style.display = 'block';
+    }
+
+    searchInput.addEventListener('input', () => {
+      hiddenInput.value = '';
+      searchInput.classList.remove('is-invalid');
+      if (!searchInput.value.trim()) { resultsBox.style.display = 'none'; return; }
+      renderResults(searchInput.value);
+    });
+
+    searchInput.addEventListener('focus', () => {
+      if (searchInput.value.trim() && !hiddenInput.value) renderResults(searchInput.value);
+    });
+
+    resultsBox.addEventListener('mousedown', e => {
+      const btn = e.target.closest('button[data-id]');
+      if (!btn) return;
+      e.preventDefault();
+      hiddenInput.value = btn.dataset.id;
+      searchInput.value = btn.dataset.name;
+      searchInput.classList.remove('is-invalid');
+      resultsBox.style.display = 'none';
+    });
+
+    document.addEventListener('click', e => {
+      if (!wrap.contains(e.target)) resultsBox.style.display = 'none';
+    });
+  });
+
+  document.querySelectorAll('.assign-slot-form').forEach(form => {
+    form.addEventListener('submit', (e) => {
+      const hiddenInput = form.querySelector('.assign-volunteer-id');
+      if (!hiddenInput.value) {
+        e.preventDefault();
+        form.querySelector('.assign-search-input').classList.add('is-invalid');
+        return;
+      }
+      const button = form.querySelector('button[type="submit"]');
+      button.disabled = true;
+      button.querySelector('.spinner-border').classList.remove('d-none');
+      button.querySelector('.assign-btn-label').textContent = 'Assigning...';
+    });
+  });
+})();
+</script>
+{% endblock %}

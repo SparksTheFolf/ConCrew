@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}My Profile{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <h3 class="mb-0">My Profile</h3>
+  <button type="button" id="reopen-welcome-tour" class="btn btn-sm btn-outline-secondary">Show me the overview again</button>
+</div>
+
+<div class="row">
+  <div class="col-md-4 mb-4">
+    <div class="card card-body text-center">
+      <h6 class="text-muted">Your Volunteer Code</h6>
+      <h2 class="mb-3">{{ current_user.usercode }}</h2>
+      <img src="{{ url_for('profile.qrcode_image') }}" alt="QR code" class="img-fluid mx-auto" style="max-width: 220px;">
+      <p class="small text-muted mt-2">Staff can scan this to quickly log your hours.</p>
+    </div>
+  </div>
+
+  <div class="col-md-8">
+    <div class="card card-body">
+      <h5>Your Info</h5>
+      <form method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="mb-3">
+          <label class="form-label">Full Name</label>
+          <input type="text" name="full_name" class="form-control" value="{{ current_user.full_name }}" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Badge Name</label>
+          <input type="text" name="badge_name" class="form-control" value="{{ current_user.badge_name }}" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Email</label>
+          <input type="email" name="email" class="form-control" value="{{ current_user.email or '' }}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">New Password <span class="text-muted small">(leave blank to keep current)</span></label>
+          <input type="password" name="new_password" class="form-control">
+        </div>
+        <button class="btn btn-primary">Save Changes</button>
+      </form>
+    </div>
+
+    {% if current_user.role == 'volunteer' %}
+    <div class="card card-body mt-3">
+      <h6 class="text-muted mb-1">Role</h6>
+      <span class="badge bg-secondary badge-role">{{ current_user.role }}</span>
+      <a href="{{ url_for('volunteer.dashboard') }}" class="small ms-2">View my hours & rewards →</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

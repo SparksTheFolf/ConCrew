@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Log In With Code{% endblock %}
+{% block content %}
+<div class="row justify-content-center mt-5">
+
+  <h1 class="text-center mt-4">Log In With a Code</h1>
+  <p class="text-center">Enter your account email and we'll send you a one-time login code.</p>
+
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h4 class="card-title mb-3">Email Me a Code</h4>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+        <form method="POST">
+          {{ form.hidden_tag() }}
+          <div class="mb-3">
+            {{ form.email.label(class="form-label") }}
+            {{ form.email(class="form-control", autofocus=true) }}
+          </div>
+          {{ form.submit(class="btn btn-primary w-100") }}
+        </form>
+        <p class="text-center mt-3 mb-0">
+          <a href="{{ url_for('auth.login') }}">Back to password login</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ user.badge_name }}{% endblock %}
+{% block content %}
+<h3>Edit {{ user.badge_name }}</h3>
+
+<form method="POST" class="card card-body bg-white" style="max-width: 550px;" id="edit-user-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div class="mb-3">
+    <label class="form-label">Role</label>
+    <select name="role" class="form-select" id="role-select" required>
+      {% for r in roles %}
+      <option value="{{ r }}" {% if r == user.role %}selected{% endif %}>{{ r }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3" id="dept-field" style="display:none;">
+    <label class="form-label">Departments Managed (for assigners)</label>
+    <select name="department_ids" class="form-select" multiple size="5">
+      {% for d in departments %}
+      <option value="{{ d.id }}" {% if d.id in current_dept_ids %}selected{% endif %}>{{ d.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3" id="report-to-field" style="display:none;">
+    <label class="form-label">Report To (required for volunteers)</label>
+    <select name="report_to_id" id="report-to-select" class="form-select">
+      <option value="">Select supervisor</option>
+      {% for u in report_to_options %}
+      <option value="{{ u.id }}" {% if user.report_to_id == u.id %}selected{% endif %}>{{ u.badge_name }} ({{ u.role }})</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="d-flex gap-2">
+    <button class="btn btn-primary">Save Changes</button>
+    <a href="{{ url_for('admin.users') }}" class="btn btn-outline-secondary">Cancel</a>
+  </div>
+</form>
+
+<script>
+  const roleSelect = document.getElementById('role-select');
+  const deptField = document.getElementById('dept-field');
+  const reportToField = document.getElementById('report-to-field');
+  const reportToSelect = document.getElementById('report-to-select');
+
+  function syncDeptVisibility() {
+    deptField.style.display = roleSelect.value === 'assigner' ? 'block' : 'none';
+  }
+  function syncReportToVisibility() {
+    const isVolunteer = roleSelect.value === 'volunteer';
+    reportToField.style.display = isVolunteer ? 'block' : 'none';
+    reportToSelect.required = isVolunteer;
+    if (!isVolunteer) {
+      reportToSelect.value = '';
+    }
+  }
+  roleSelect.addEventListener('change', syncDeptVisibility);
+  roleSelect.addEventListener('change', syncReportToVisibility);
+  syncDeptVisibility();
+  syncReportToVisibility();
+</script>
+{% endblock %}
