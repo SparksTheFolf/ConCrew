@@ -1,17 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Log In{% endblock %}
+{% block title %}Enter Login Code{% endblock %}
 {% block content %}
 <div class="row justify-content-center mt-5">
 
-    <h1 class="text-center mt-4">Welcome to ConCrew!</h1>
-  <p class="text-center">Please log in to access your account and manage your volunteer
-  activities. <br> If you don't have an account, please contact the administrator to create one.</p>
-  
+  <h1 class="text-center mt-4">Enter Your Code</h1>
+  <p class="text-center">Check your email for a 6-digit login code. It expires in a few minutes.</p>
 
   <div class="col-md-4">
     <div class="card shadow-sm">
       <div class="card-body">
-        <h4 class="card-title mb-3">ConCrew Log In</h4>
+        <h4 class="card-title mb-3">Verify Code</h4>
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
             {% for category, message in messages %}
@@ -25,21 +23,13 @@
         <form method="POST">
           {{ form.hidden_tag() }}
           <div class="mb-3">
-            {{ form.identifier.label(class="form-label") }}
-            {{ form.identifier(class="form-control") }}
-          </div>
-          <div class="mb-3">
-            {{ form.password.label(class="form-label") }}
-            {{ form.password(class="form-control") }}
-          </div>
-          <div class="form-check mb-3">
-            {{ form.remember(class="form-check-input") }}
-            {{ form.remember.label(class="form-check-label") }}
+            {{ form.code.label(class="form-label") }}
+            {{ form.code(class="form-control", autofocus=true, inputmode="numeric", autocomplete="one-time-code", maxlength="6") }}
           </div>
           {{ form.submit(class="btn btn-primary w-100") }}
         </form>
         <p class="text-center mt-3 mb-0">
-          <a href="{{ url_for('auth.login_code_request') }}">Log in with an emailed code instead</a>
+          <a href="{{ url_for('auth.login_code_request') }}">Didn't get a code? Request another</a>
         </p>
       </div>
     </div>

@@ -1,4 +1,4 @@
-# Volunteer Tracker
+# ConCrew - Volunteer Tracker
 
 Standalone volunteer hour tracking + reward fulfillment + scheduling app for
 the con.

@@ -192,6 +192,65 @@ def _send_single_email(to_email, subject, text_body, html_body):
     return True, None
 
 
+def _login_code_html(user, code):
+    return f"""\
+<!doctype html>
+<html>
+<body style="margin:0; padding:0; background-color:#f2f2f5; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f2f2f5; padding:32px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:10px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+          <tr>
+            <td style="background-color:#212529; padding:24px 32px;">
+              <span style="font-size:20px; font-weight:600; color:#ffffff;">ConCrew</span><br>
+              <span style="font-size:13px; color:#adb5bd;">Your Login Code</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 8px; font-size:16px; color:#212529;">
+                Hi {user.badge_name},
+              </p>
+              <p style="margin:0 0 24px; font-size:14px; color:#495057; line-height:1.5;">
+                Use this code to log in. It expires in a few minutes and can only be used once.
+              </p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                     style="background-color:#f8f9fa; border-radius:8px; border:1px solid #e9ecef;">
+                <tr>
+                  <td style="padding:20px 24px; text-align:center;">
+                    <span style="font-size:32px; font-weight:700; letter-spacing:6px; color:#212529;">{code}</span>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:24px 0 0; font-size:13px; color:#868e96; line-height:1.5;">
+                If you didn't request this code, you can safely ignore this email.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
+
+
+def send_login_code_email(user, code):
+    if not user.email:
+        return False, "Account has no email address on file."
+
+    subject = f"ConCrew - Your login code is {code}"
+    text_body = (
+        f"Hello {user.badge_name},\n\n"
+        f"Your ConCrew login code is: {code}\n\n"
+        f"This code expires in a few minutes and can only be used once. "
+        f"If you didn't request this, you can ignore this email.\n"
+    )
+    return _send_single_email(user.email, subject, text_body, _login_code_html(user, code))
+
+
 def send_shift_assignment_email(volunteer, slot):
     if not volunteer.email:
         return False, "Volunteer has no email address on file."

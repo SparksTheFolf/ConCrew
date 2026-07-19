@@ -21,3 +21,6 @@ class Config:
     MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
     MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER")
     MAIL_SUPPRESS_SEND = os.environ.get("MAIL_SUPPRESS_SEND", "false").lower() in ("1", "true", "yes", "on")
+    LOGIN_CODE_TTL_SECONDS = int(os.environ.get("LOGIN_CODE_TTL_SECONDS", 600))
+    LOGIN_CODE_RESEND_COOLDOWN_SECONDS = int(os.environ.get("LOGIN_CODE_RESEND_COOLDOWN_SECONDS", 60))
+    LOGIN_CODE_MAX_ATTEMPTS = int(os.environ.get("LOGIN_CODE_MAX_ATTEMPTS", 5))

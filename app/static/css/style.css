@@ -44,6 +44,11 @@ body {
   color: var(--bs-body-color);
 }
 
+[data-bs-theme="dark"] .bg-light {
+  background-color: var(--bs-tertiary-bg) !important;
+  color: var(--bs-body-color) !important;
+}
+
 [data-bs-theme="dark"] .text-muted {
   color: var(--bs-secondary-color) !important;
 }

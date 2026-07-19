@@ -25,6 +25,7 @@
         {% else %}<span class="badge bg-secondary">Inactive</span>{% endif %}
       </td>
       <td class="text-end text-nowrap">
+        <a href="{{ url_for('admin.edit_user', user_id=u.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
         <form method="POST" action="{{ url_for('admin.reset_password', user_id=u.id) }}" class="d-inline">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn btn-sm btn-outline-secondary" onclick="return confirm('Generate a new password for {{ u.badge_name }}?')">Reset PW</button>

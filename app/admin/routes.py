@@ -468,6 +468,93 @@ def new_user():
     )
 
 
+@admin_bp.route("/users/<int:user_id>/edit", methods=["GET", "POST"])
+@login_required
+@roles_required(Role.ADMIN)
+def edit_user(user_id):
+    user = User.query.get_or_404(user_id)
+    departments = Department.query.order_by(Department.name).all()
+    report_to_options = User.query.filter(
+        User.active.is_(True),
+        User.role.in_([Role.ADMIN, Role.ASSIGNER, Role.CONSTORE]),
+        User.id != user.id,
+    ).order_by(User.badge_name).all()
+    current_dept_ids = {link.department_id for link in user.department_links}
+
+    if request.method == "POST":
+        role = request.form.get("role", user.role)
+        report_to_id_raw = request.form.get("report_to_id", "").strip()
+        dept_ids = request.form.getlist("department_ids")
+
+        if role not in Role.ALL:
+            flash("Invalid role.", "danger")
+            return redirect(url_for("admin.edit_user", user_id=user.id))
+
+        if user.role == Role.ADMIN and role != Role.ADMIN:
+            active_admins = User.query.filter_by(role=Role.ADMIN, active=True).count()
+            if active_admins <= 1:
+                flash("Can't change the role of the last active admin.", "danger")
+                return redirect(url_for("admin.edit_user", user_id=user.id))
+
+        report_to_id = None
+        if role == Role.VOLUNTEER:
+            if not report_to_id_raw:
+                flash("A 'Report To' person is required for volunteers.", "danger")
+                return redirect(url_for("admin.edit_user", user_id=user.id))
+            try:
+                report_to_id = int(report_to_id_raw)
+            except ValueError:
+                flash("Invalid 'Report To' selection.", "danger")
+                return redirect(url_for("admin.edit_user", user_id=user.id))
+            if report_to_id == user.id:
+                flash("A user can't report to themselves.", "danger")
+                return redirect(url_for("admin.edit_user", user_id=user.id))
+
+            report_to_user = User.query.filter(
+                User.id == report_to_id,
+                User.active.is_(True),
+                User.role.in_([Role.ADMIN, Role.ASSIGNER, Role.CONSTORE]),
+            ).first()
+            if not report_to_user:
+                flash("Selected 'Report To' person is not valid.", "danger")
+                return redirect(url_for("admin.edit_user", user_id=user.id))
+
+        old_role = user.role
+        user.role = role
+        user.report_to_id = report_to_id
+
+        # Anyone who reported to this user needs to be reassigned by the admin
+        # once this user is no longer a valid supervisor role.
+        if role not in (Role.ADMIN, Role.ASSIGNER, Role.CONSTORE):
+            User.query.filter_by(report_to_id=user.id).update({User.report_to_id: None})
+
+        if role == Role.ASSIGNER:
+            AssignerDepartment.query.filter_by(assigner_id=user.id).delete()
+            for dept_id in dept_ids:
+                db.session.add(AssignerDepartment(assigner_id=user.id, department_id=int(dept_id)))
+        elif old_role == Role.ASSIGNER:
+            AssignerDepartment.query.filter_by(assigner_id=user.id).delete()
+
+        db.session.add(AuditLog(
+            actor_id=current_user.id, action="edit_user",
+            target_type="User", target_id=user.id,
+            detail=f"{user.badge_name}: role {old_role} -> {role}"
+        ))
+        db.session.commit()
+
+        flash(f"Updated {user.badge_name}.", "success")
+        return redirect(url_for("admin.users"))
+
+    return render_template(
+        "admin/edit_user.html",
+        user=user,
+        departments=departments,
+        roles=Role.ALL,
+        report_to_options=report_to_options,
+        current_dept_ids=current_dept_ids,
+    )
+
+
 @admin_bp.route("/convention", methods=["GET", "POST"])
 @login_required
 @roles_required(Role.ADMIN)

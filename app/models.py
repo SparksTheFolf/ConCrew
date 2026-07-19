@@ -17,6 +17,11 @@ def generate_usercode():
             return code
 
 
+def generate_login_code(length=6):
+    """Numeric one-time code for passwordless email login, e.g. 483920."""
+    return "".join(random.choices(string.digits, k=length))
+
+
 class Role:
     ADMIN = "admin"
     ASSIGNER = "assigner"
@@ -138,6 +143,30 @@ class User(UserMixin, db.Model):
 
     def __repr__(self):
         return f"<User {self.badge_name} ({self.role})>"
+
+
+class LoginCode(db.Model):
+    """A one-time numeric code emailed to a user so they can log in without
+    a password. Stored hashed (like a password) so a DB leak alone doesn't
+    hand over usable codes; a short TTL plus a per-code attempt cap limit
+    brute-forcing in the window before that hash would matter less."""
+    __tablename__ = "login_codes"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    code_hash = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    attempts = db.Column(db.Integer, nullable=False, default=0)
+    consumed_at = db.Column(db.DateTime, nullable=True)
+
+    user = db.relationship("User")
+
+    def is_valid(self):
+        return self.consumed_at is None and datetime.utcnow() < self.expires_at
+
+    def check_code(self, raw_code):
+        return check_password_hash(self.code_hash, raw_code)
 
 
 class ConYear(db.Model):
