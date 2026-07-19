@@ -7,4 +7,33 @@ services:
       - ./instance:/app/instance
     env_file:
       - .env
+    environment:
+      # Overrides whatever DATABASE_URL is in .env -- inside this compose
+      # network the db service is reachable at the hostname "db", not
+      # localhost. Local (non-Docker) runs should keep using localhost via
+      # .env's own DATABASE_URL.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-volunteer}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-volunteer}
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-volunteer}
+      POSTGRES_USER: ${POSTGRES_USER:-volunteer}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-volunteer} -d ${POSTGRES_DB:-volunteer}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pgdata:

@@ -7,7 +7,7 @@ load_dotenv()
 class Config:
     APP_NAME = os.environ.get("APP_NAME", "ConCrew")
     APP_VERSION = os.environ.get("APP_VERSION", "dev")
-    SECRET_KEY = os.environ.get("SECRET_KEY", "dev-change-me-in-prod")
+    SECRET_KEY = os.environ.get("SECRET_KEY")
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         "DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'instance', 'volunteer.db')}"
     )

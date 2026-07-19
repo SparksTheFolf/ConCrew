@@ -22,6 +22,8 @@ from app.models import (
 )
 
 app = create_app()
+# Ensure no emails are sent when running the seed script
+app.config.setdefault("MAIL_SUPPRESS_SEND", True)
 
 
 def get_or_create(model, defaults=None, **kwargs):
